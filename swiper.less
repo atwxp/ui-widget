@@ -1,0 +1,40 @@
+.slider-list {
+    position: relative;
+    overflow: hidden;
+    margin: 0 auto;
+    width: @w;
+    height: @h;
+
+    .slider-item {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 100%;
+    }
+
+    /* your custom slider-nav */
+    .slider-nav {
+        margin-top: 40px;
+        height: 44px;
+        line-height: 44px;
+        text-align: center;
+        i {
+            display: inline-block;
+            margin-left: 10px;
+            width: 5px;
+            height: 5px;
+            border-radius: 5px;
+            border: 1px solid #ff5a84;
+            &:first-child {
+                margin-left: 0;
+            }
+            &.active {
+              width: 7px;
+              height: 7px;
+              border: 0;
+              background: #ff5a84;
+            }
+        }
+    }
+}
