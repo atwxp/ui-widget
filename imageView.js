@@ -1,8 +1,3 @@
-/**
- * @file   图片预览查看器
- * @author wupanpan@baidu.com
- * @date   2015-04-09
- */
 define(function (require, exports, module) {
 
     var $ = require('dep/zepto');
