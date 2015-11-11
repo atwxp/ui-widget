@@ -1,82 +1,69 @@
+/**
+ * @file   图片预览查看器
+ * @author wxp201013@gmail.com
+ */
+
 define(function (require, exports, module) {
 
     var $ = require('dep/zepto');
-    var Hammer = require('./hammer.js');
+    var Hammer = require('./hammer');
 
-    /**
-     * @constructor
-     * @param {Object}   options             配置项
-     * @param {DOM}      options.elem        数据源的容器，默认从容器的data-pics||data-pics2x获取,
-     *                                       可以通过reloadImageSource()自定义数据源, 返回一个数组
-     * @param {Array}    options.imgSource   图片集合
-     * @param {number=}  options.proportion  超过这个比例才切换，否则弹回
-     * @param {number=}  options.speed       动画时间(ms)
-     * @param {boolean=} options.animate     是否开启切换动画
-     * @param {boolean=} options.hasToolBar  是否显示工具条
-     * @param {boolean=} options.hasMetaBar  是否显示信息条如图片描述，提供下载保存按钮等
-     * @param {number=}  options.preload     预加载几张图片，默认加载当前图片的前后各1张, 以此例推
-     * @param {number=}  options.zoomScale   使图片好看的附加缩放比例
-     * @param {number=}  options.isFull      点击图片是否全屏还是关闭弹层
-     */
-    function ImageView(options) {
-        var defaults = {
-            elem: '',
+    var ImageView = {
+
+        options: {
+            // get image source from elem
+            elem: null,
+
+            // get image mannualy without elem
             imgSource: [],
+
+            cur: 0,
+
+            dataAttribute: 'pics',
+
             proportion: .4,
+
             speed: 200,
+
             animate: true,
+
             hasToolBar: true,
+
             hasMetaBar: false,
+
             preload: 1,
+
             zoomScale: 1,
-            isFull: true
-        };
 
-        extend(this, defaults, options);
+            isFullScreen: true,
 
-        this.init();
-    }
+            allowHistory: false
+        },
 
-    ImageView.cid = 0;
+        init: function (options) {
 
-    ImageView.prototype = {
+            var options = extend(this.options, options);
 
-        constructor: ImageView,
+            this.initViewport();
 
-        /**
-         * 初始化应用
-         */
-        init: function () {
-
-            // 指定了elem, 重新获取图片源, 覆盖imgSource
-            this.imgSource = (this.elem && this.reloadImageSource()) || this.imgSource;
-
-            this.len = this.imgSource.length;
-
-            // 生成模板
+            // init tpl
             this.initTpl();
 
-            // 初始化位置
-            this.initPos();
+            // refresh pos
+            this.refreshImagePos();
 
-            // 绑定swipe事件
+            // bind event
             this.bindEvent();
+
+            return this;
         },
 
         /**
-         * 重新加载图片源
-         *
-         * @return {Array}
-         */
-        reloadImageSource: function () {
-            return $(this.elem).data(window.devicePixelRatio > 1 ? 'pics2x' : 'pics').split(',');
-        },
-
-        /**
-         * 初始化模板
+         * construct image preview's html
          */
         initTpl: function () {
-            // 遮罩层
+            var options = this.options;
+
             var maskDiv = this.mask = document.createElement('div');
             maskDiv.setAttribute('class', 'ui-mask');
 
@@ -84,109 +71,122 @@ define(function (require, exports, module) {
             maskWrapper.setAttribute('class', 'wrapper');
             maskDiv.appendChild(maskWrapper);
 
-            // 工具条外面的容器
-            var wrapDiv = this.main = document.createElement('div');
-            wrapDiv.setAttribute('class', 'ui-imageview');
-            wrapDiv.setAttribute('cid', ImageView.cid++);
-            maskWrapper.appendChild(wrapDiv);
+            var main = this.main = document.createElement('div');
+            main.setAttribute('class', 'ui-imageview');
+            maskWrapper.appendChild(main);
 
-            // 添加工具条
-            if (this.hasToolBar) {
-                this.toolbar = this.renderToolBar();
-                wrapDiv.appendChild(this.toolbar);
+            // add top bar
+            if (options.hasToolBar) {
+                this.renderToolBar();
             }
 
-            // 添加信息条
-            if (this.hasMetaBar) {
-                this.metabar = this.renderMetaBar();
-                wrapDiv.appendChild(this.metabar);
+            // image list's wrapper
+            var wrapper = this.wrapper = document.createElement('ul');
+            wrapper.setAttribute('class', 'imageview-wrap');
+            main.appendChild(wrapper);
+
+            // add bottom bar
+            if (options.hasMetaBar) {
+                this.renderMetaBar();
             }
 
-            // 图片外面的容器
-            var imageviewWrap = this.wrapper = document.createElement('ul');
-            imageviewWrap.setAttribute('class', 'imageview-wrap');
-            wrapDiv.appendChild(imageviewWrap);
-
-            this.append();
+            // construct image list's html
+            this.render();
 
             document.body.appendChild(maskDiv);
         },
 
-        /**
-         * 初始化时调整图片大小适应屏幕
-         */
-        initPos: function () {
-            var viewW = window.innerWidth;
-            var viewH = window.innerHeight;
-            var self = this;
-
-            this.viewport = {
-                width: viewW,
-                height: viewH
-            };
-
-            $(this.wrapper).find('.imageview-item').each(function (index, node) {
-                node.style.width = viewW + 'px';
-                node.style.height = viewH + 'px';
-
-                var img = node.querySelector('img');
-                img && imageResizeToCenter(img, self.viewport, self.zoomScale);
-            });
-
-            this.wrapper.style.width = viewW * this.len + 'px';
+        initViewport: function () {
+            this.viewW = window.innerWidth;
+            this.viewH = window.innerHeight;
         },
 
-        /**
-         * 事件绑定
-         */
+        refreshImagePos: function () {
+            var wrapper = this.wrapper;
+
+            var options = this.options;
+
+            var viewW = this.viewW;
+            var viewH = this.viewH;
+
+            var len = this.length;
+
+            var me = this;
+
+            this.albums = wrapper.querySelectorAll('[data-role="imageview-item"]');
+
+            [].forEach.call(this.albums, function (node) {
+                node.style.width = viewW + 'px';
+                node.style.height = viewH + 'px';
+            });
+
+            wrapper.style.width = viewW * len + 'px';
+        },
+
         bindEvent: function () {
             var events = 'release drag swipeleft swiperight tap';
-            var self = this;
 
-            this.hammer = new Hammer(self.wrapper, {dragLockToAxis: true})
+            var main = this.main;
+
+            var wrapper = this.wrapper;
+
+            var options = this.options;
+
+            var me = this;
+
+            this.hammer = new Hammer(wrapper, {dragLockToAxis: true})
                 .on(events, this.eventTouchHandler.bind(this));
 
-            $(this.wrapper).on('touchstart', function (e) {
+            wrapper.addEventListener('touchstart', function (e) {
                 e.preventDefault();
             });
 
-            // 定义了工具条
-            if (this.hasToolBar) {
-                $(this.toolbar).find('[data-role="back"]').on('click', function (e) {
-                    e.preventDefault();
-                    self.hide();
+            window.addEventListener('resize', function (e) {
+
+                me.initViewport();
+
+                me.refreshImagePos();
+            }, false);
+
+            if (options.hasToolBar) {
+                // trigger pagechange
+                $(this).on('pagechange', function (e, index) {
+                    main.querySelector('[data-role="curPic"]').textContent = index + 1;
                 });
 
-                // 同步工具栏中的文字
-                $(this.toolbar).on('pagechange', function (e, index) {
-                    this.querySelector('[data-role="curPic"]').innerHTML = index + 1;
+                main.querySelector('[data-role="back"]').addEventListener('click', function (e) {
+                    e.preventDefault();
+
+                    me.hide();
                 });
             }
 
-            // 随窗口resize而调整
-            $(window).on('resize', function (e) {
-                self.initPos();
-            });
+            if (options.allowHistory) {
+                this.realHide = this.hide;
+    
+                this.hide = function () {
+                    if (this.showing) {
+                        history.back();
+                    }
+                }
+            }
         },
 
-        /**
-         * 加载指定索引的图片
-         *
-         * @param {number} pos 图片的索引
-         */
         loadImage: function (pos) {
-            if (pos < 0 || pos >= this.len) {
+            var len = this.length;
+
+            if (pos < 0 || pos >= len) {
                 return;
             }
 
-            var node = this.wrapper.querySelectorAll('.imageview-item')[pos];
-            var self = this;
+            var node = this.albums[pos];
 
-            // 未加载图片
-            if (node && parseInt(node.getAttribute('data-load'), 10) === 0) {
+            var me = this;
+
+            if (node && !parseInt(node.getAttribute('data-load'), 10)) {
 
                 var img = document.createElement('img');
-                img.src = this.imgSource[pos];
+
                 img.style.display = 'none';
 
                 img.onload = function () {
@@ -194,21 +194,28 @@ define(function (require, exports, module) {
 
                     node.setAttribute('data-load', 1);
 
-                    imageResizeToCenter(img, self.viewport);
+                    imageResizeToCenter(img, {
+                        width: me.viewW,
+                        height: me.viewH
+                    });
 
-                    $(node).html(img);
+                    node.appendChild(img);
 
                     img.style.display = '';
                 };
+
+                img.src = this.options.imgSource[pos];
             }
         },
 
-        /**
-         * 手势事件处理
-         *
-         * @param {Object} ev 事件对象
-         */
         eventTouchHandler: function (ev) {
+            var viewW = this.viewW;
+
+            var options = this.options;
+            var cur = options.cur;
+
+            var length = this.length;
+
             var gesture = ev.gesture;
 
             gesture.preventDefault();
@@ -216,233 +223,256 @@ define(function (require, exports, module) {
             switch (ev.type) {
                 case 'drag':
                     var direction = gesture.direction;
-                    var index = this.index;
 
                     if ('left' === direction || 'right' === direction) {
-                        var length = this.len;
-
+                        
                         // stick to the finger
-                        var dragOffset = ((100 / this.viewport.width) * gesture.deltaX) / length;
+                        var dragOffset = ((100 / viewW) * gesture.deltaX) / length;
 
                         // slow down at the first and last pane
                         if (
-                            (index === 0 && direction === 'right')
-                            || (index === length - 1 && direction === 'left')
+                            (cur === 0 && direction === 'right')
+                            || (cur === length - 1 && direction === 'left')
                         ) {
                             dragOffset *= 0.4;
                         }
 
                         // switch without animate
-                        this.move(-index / length * 100 + dragOffset);
+                        this.move(-cur / length * 100 + dragOffset);
                     }
                     break;
 
                 case 'swipeleft':
+
                     this.next();
+
                     break;
 
                 case 'tap':
-                    if (typeof this.isFull === 'boolean') {
-                        this.isFull ? this.full() : this.hide();
-                    }
+
+                    options.isFullScreen ? this.fullScreen() : this.hide();
+
                     break;
 
                 case 'swiperight':
+
                     this.prev();
+
                     break;
 
                 case 'release':
                     // 达到切换阀值，则根据滑动方向切换
-                    if (Math.abs(gesture.deltaX) > this.viewport.width * this.proportion) {
+                    if (Math.abs(gesture.deltaX) > viewW * options.proportion) {
+
                         gesture.direction === 'right' ? this.prev() : this.next();
                     }
+
                     // 未达到, 则回弹
                     else {
-                        this.go(this.index);
+
+                        this.go(cur);
                     }
+
                     break;
             }
         },
 
-        /**
-         * 开启全屏模式(即 隐藏/显示 工具条和信息条)
-         */
-        full: function () {
-            $(this.main).toggleClass('ui-imageview-full');
+        fullScreen: function () {
+            this.main.classList.toggle('ui-imageview-full');
         },
 
-        /**
-         * 渲染工具条tpl
-         *
-         * @return {string}
-         */
         renderToolBar: function () {
             var div = document.createElement('div');
 
-            div.innerHTML = [
-                '<div class="imageview-toolbar">',
-                    '<span data-role="back"></span>',
-                    '<p><span data-role="curPic"></span>/',
-                    '<span data-role="totalPic">' + this.len + '</span>张图片</p>',
-                '</div>'
-                ].join('');
+            div.innerHTML = ''
+                + '<div class="imageview-toolbar">'
+                +     '<span data-role="back"></span>'
+                +     '<p>'
+                +         '<span data-role="curPic"></span>/'
+                +         '<span data-role="totalPic"></span>张图片'
+                +     '</p>',
+                + '</div>';
 
-            return div.firstChild;
+            this.main.appendChild(div.firstChild);
         },
 
-        /**
-         * 自定义bar
-         */
         renderMetaBar: function () {
+            var div = document.createElement('div');
+
+            div.innerHTML = '<div class="imageview-metabar" data-role="imageview-metabar"></div>'
+
+            this.main.appendChild(div.firstChild);
         },
 
         /**
-         * 图片源变更时触发更新
-         * @param {HTMLElement} container 有数据源的元素
+         * repaint when imagesource change
+         *
+         * @param {HTMLElement} container elem with dataAttribute(pics)
          */
         update: function (container) {
-            if (container !== this.elem) {
-                this.elem = container;
-                this.repaint();
+            var elem = this.options.elem;
+
+            if (container !== elem) {
+
+                this.options.elem = container;
+
+                this.render();
+
+                this.refreshImagePos();
             }
         },
 
         /**
-         * 从新的图片源处获取数据并重绘
+         * construct img's html
          */
-        repaint: function () {
-            this.imgSource = this.reloadImageSource();
+        render: function () {
 
-            this.len = this.imgSource.length;
+            var wrapper = this.wrapper;
 
-            $(this.toolbar).show().find('[data-role="totalPic"]').html(this.len);
+            var options = this.options;
 
-            $(this.metabar).show();
+            var picAttribute = 'data-' + (options.dataAttribute || 'pics');
 
-            this.append();
+            if (options.elem) {
+                options.imgSource = options.elem.getAttribute(picAttribute).split(',');
+            }
 
-            this.initPos();
-        },
+            this.length = options.imgSource.length || 0;
 
-        /**
-         * 重绘图片源的HTML结构
-         */
-        append: function () {
-            var self = this;
+            var fragment = document.createDocumentFragment();
 
-            this.wrapper.innerHTML = '';
+            wrapper.innerHTML = '';
 
-            this.imgSource.forEach(function (image, index) {
+            options.imgSource.forEach(function (image, index) {
                 var li = document.createElement('li');
+
                 li.setAttribute('class', 'imageview-item');
+                li.setAttribute('data-role', 'imageview-item');
                 li.setAttribute('data-load', 0);
 
-                var img = document.createElement('img');
-                img.src = 'placeholder.png';
-
-                li.appendChild(img);
-                self.wrapper.appendChild(li);
+                fragment.appendChild(li);
             });
+
+            wrapper.appendChild(fragment);
+
+            if (options.hasToolBar) {
+                this.main.querySelector('[data-role="totalPic"]').textContent = this.length;
+            }
+            if (options.hasMetaBar) {
+                this.refreshMeta();
+            }
         },
 
-        /**
-         * 打开图片预览器
-         *
-         * @return {Object}
-         */
+        refreshMeta: function () {
+            var options = this.options;
+
+            this.main.querySelector('[data-role="imageview-metabar"]').textContent = options.elem.querySelector(options.hasMetaBar).textContent;
+        },
+
         show: function () {
-            var self = this;
+            var me = this;
 
-            $(this.mask).show();
+            var options = this.options;
 
-            function popstateEvent() {
-                e.preventDefault();
+            var allowHistory = options.allowHistory;
 
-                self.hide(e);
+            this.mask.classList.add('visible');
 
-                window.removeEventListener('popstate', popstateEvent);
+            this.showing = true;
+
+            // allow pushstate
+            if (allowHistory) {
+                var popstateEvent = function (e) {
+                    e.preventDefault();
+
+                    me.realHide();
+
+                    window.removeEventListener('popstate', popstateEvent);
+                }
+
+                history.pushState({}, '查看相册');
+
+                window.addEventListener('popstate', popstateEvent);
             }
-
-            history.pushState({}, '查看相册');
-
-            window.addEventListener('popstate', popstateEvent);
 
             return this;
         },
 
-        /**
-         * 关闭图片预览器
-         */
-        hide: function (e) {
-            if (e && e.type == 'popstate') {
-                $(this.mask).hide();
-            }
-            else {
-                history.back();
-            }
+        hide: function () {
+            this.mask.classList.remove('visible');
+
+            this.showing = false;
         },
 
-        /**
-         * 前一页
-         */
         prev: function () {
-            this.go(this.index - 1);
+            this.go(this.options.cur - 1);
         },
 
-        /**
-         * 后一页
-         */
         next: function () {
-            this.go(this.index + 1);
+            this.go(this.options.cur + 1);
         },
 
-        /**
-         * 查看某一页
-         *
-         * @param {number} index 索引值
-         */
         go: function (index) {
-            // 修正index, 回弹不触发
-            if (index !== this.index) {
-                this.index = index = Math.max(0, Math.min(index, this.len - 1));
-                $(this.toolbar).trigger('pagechange', index);
+            var len = this.length;
+
+            var options = this.options;
+
+            var cur = options.cur;
+
+            if (index == null) {
+                index = cur;
             }
 
-            this.move(-index / this.len * 100, this.speed);
+            // 修正index, 回弹不触发
+            if (index !== cur) {
+                cur = options.cur = Math.max(0, Math.min(index, len - 1));
+            }
 
-            this.loadImage(index);
+            $(this).trigger('pagechange', cur);
 
-            for (var i = 1, len = this.preload || 0; i <= len; i++) {
-                this.loadImage(index + i);
-                this.loadImage(index - i);
+            this.move(-cur / len * 100, options.speed);
+
+            this.loadImage(cur);
+
+            for (var i = 1, len = options.preload; i <= len; i++) {
+
+                this.loadImage(cur + i);
+
+                this.loadImage(cur - i);
             }
         },
 
-        /**
-         * 图片切换的动画效果
-         *
-         * @param {number}  dist 滑动的距离
-         * @param {number}  speed 切换的速度, ms
-         */
         move: function (dist, speed) {
-            var cssText = {
-                '-webkit-transform': 'translate3d(' + dist + '%, 0, 0) scale3d(1, 1, 1)',
-                'transform': 'translate3d(' + dist + '%, 0, 0) scale3d(1, 1, 1)'
-            };
+            var cssText = ''
+                + '-webkit-transform: translate3d(' + dist + '%, 0, 0) scale3d(1, 1, 1);'
+                + 'transform: translate3d(' + dist + '%, 0, 0) scale3d(1, 1, 1);';
 
-            this.animate && $.extend(
-                cssText,
-                {
-                    '-webkit-transition': '-webkit-transform ' + (speed || 0) + 'ms',
-                    'transition': 'transform ' + (speed || 0) + 'ms'
-                }
-            );
+            if (this.options.animate) {
+                cssText += ''
+                    + '-webkit-transition: -webkit-transform ' + (speed || 0) + 'ms;'
+                    + 'transition: transform ' + (speed || 0) + 'ms;'
+            }
 
-            $(this.wrapper).css(cssText);
+            this.wrapper.style.cssText += cssText;
+        },
+
+        dispose: function () {
+            document.body.removeChild(this.mask);
+
+            this.options = null;
+
+            this.mask = null;
+            this.main = null;
+            this.wrapper = null;
+            this.albums = null;
+
+            this.length = null;
+            this.viewW = null;
+            this.viewH = null;
+
+            this.showing = null;
         }
     };
-
-    /**============= Utils ================**/
 
     /**
      * 缩放图片居中显示
@@ -505,6 +535,7 @@ define(function (require, exports, module) {
                 }
             }
         }
+        return target;
     }
 
     module.exports = ImageView;
