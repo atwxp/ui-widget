@@ -1,13 +1,15 @@
 @import '../../src/widget/util/util.less';
 
 .ui-mask {
-    display: none;
+    opacity: 0;
+    visibility: hidden;
     position: fixed;
     left: 0;
     top: 0;
     right: 0;
     bottom: 0;
 
+    .transition(all .3s);
     .user-select(none);
     background-color: #000;
     -webkit-touch-callout: none;
@@ -23,7 +25,8 @@
         opacity: 1;
     }
     &.visible {
-        display: block;
+        opacity: 1;
+        visibility: visible;
     }
 }
 
@@ -73,15 +76,16 @@
                 .transform(rotate(-45deg));                
             }
         }
+        [data-role="curPic"],
+        [data-role="totalPic"] {
+            vertical-align: top;
+        }
     }
     .imageview-wrap {
         height: 100%;
         .imageview-item {
             float: left;
-            .img-placeholder();
-            background-position: center;
-            -webkit-background-size: 118px 72px;
-            background-size: 118px 72px;
+            .img-loading();
             img {
                 display: block;
                 margin: 0 auto;
