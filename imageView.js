@@ -269,7 +269,6 @@ define(function (require, exports, module) {
 
                     // 未达到, 则回弹
                     else {
-
                         this.go(cur);
                     }
 
@@ -289,7 +288,7 @@ define(function (require, exports, module) {
                 +     '<span data-role="back"></span>'
                 +     '<p>'
                 +         '<span data-role="curPic"></span>/'
-                +         '<span data-role="totalPic"></span>张图片'
+                +         '<span data-role="totalPic"></span>'
                 +     '</p>',
                 + '</div>';
 
@@ -412,12 +411,17 @@ define(function (require, exports, module) {
             this.go(this.options.cur + 1);
         },
 
-        go: function (index) {
+        go: function (index, speed) {
             var len = this.length;
 
             var options = this.options;
 
             var cur = options.cur;
+
+            // speed = 0, 没有动画
+            if (speed == null) {
+                speed = options.speed;
+            }
 
             if (index == null) {
                 index = cur;
@@ -430,7 +434,7 @@ define(function (require, exports, module) {
 
             $(this).trigger('pagechange', cur);
 
-            this.move(-cur / len * 100, options.speed);
+            this.move(-cur / len * 100, speed);
 
             this.loadImage(cur);
 
