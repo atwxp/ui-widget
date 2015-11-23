@@ -4,18 +4,23 @@
  */
 
 define(function (require, exports, module) {
+    require('./imageview.less');
 
-    var $ = require('dep/zepto');
-    var Hammer = require('./hammer');
+    var Hammer = require('dep/hammer');
+    var Emitter = require('widget/class/emitter');
 
     var ImageView = {
 
         options: {
+
             // get image source from elem
             elem: null,
 
             // get image mannualy without elem
             imgSource: [],
+
+            // static construct tpl
+            staticTpl: false,
 
             cur: 0,
 
@@ -37,7 +42,11 @@ define(function (require, exports, module) {
 
             isFullScreen: true,
 
-            allowHistory: false
+            allowHistory: false,
+
+            hasBack: true,
+
+            delCallback: function () {}
         },
 
         init: function (options) {
@@ -47,7 +56,12 @@ define(function (require, exports, module) {
             this.initViewport();
 
             // init tpl
-            this.initTpl();
+            if (options.staticTpl) {
+                this.initStaticTpl();
+            }
+            else {
+                this.initTpl();
+            }
 
             // refresh pos
             this.refreshImagePos();
@@ -56,6 +70,34 @@ define(function (require, exports, module) {
             this.bindEvent();
 
             return this;
+        },
+
+        initStaticTpl: function () {
+            var options = this.options;
+
+            var staticTpl = options.staticTpl;
+
+            this.mask = document.querySelector(staticTpl.mask);
+
+            this.main = document.querySelector(staticTpl.main);
+
+            // image list's wrapper
+            var wrapper = this.wrapper = document.createElement('ul');
+            wrapper.setAttribute('class', 'imageview-wrap');
+            this.main.appendChild(wrapper);
+
+            // add top bar
+            if (options.hasToolBar) {
+                this.renderToolBar();
+            }
+
+            // construct image list's html
+            this.render();
+
+            // add bottom bar
+            if (options.hasMetaBar) {
+                this.renderMetaBar();
+            }
         },
 
         /**
@@ -148,27 +190,28 @@ define(function (require, exports, module) {
                 me.refreshImagePos();
             }, false);
 
-            if (options.hasToolBar) {
-                // trigger pagechange
-                $(this).on('pagechange', function (e, index) {
+            this.on('pagechange', function (index) {
+                if (options.hasToolBar) {
                     main.querySelector('[data-role="curPic"]').textContent = index + 1;
-                });
+                }
+            });
 
+            if (options.hasBack) {
                 main.querySelector('[data-role="back"]').addEventListener('click', function (e) {
                     e.preventDefault();
 
                     me.hide();
-                });
+                }, false);
             }
 
             if (options.allowHistory) {
                 this.realHide = this.hide;
-    
+
                 this.hide = function () {
                     if (this.showing) {
                         history.back();
                     }
-                }
+                };
             }
         },
 
@@ -225,7 +268,7 @@ define(function (require, exports, module) {
                     var direction = gesture.direction;
 
                     if ('left' === direction || 'right' === direction) {
-                        
+
                         // stick to the finger
                         var dragOffset = ((100 / viewW) * gesture.deltaX) / length;
 
@@ -281,11 +324,15 @@ define(function (require, exports, module) {
         },
 
         renderToolBar: function () {
+            var hasBack = this.options.hasBack;
+
+            hasBack = hasBack ? '<span data-role="back"></span>' : '';
+
             var div = document.createElement('div');
 
             div.innerHTML = ''
                 + '<div class="imageview-toolbar">'
-                +     '<span data-role="back"></span>'
+                +     hasBack
                 +     '<p>'
                 +         '<span data-role="curPic"></span>/'
                 +         '<span data-role="totalPic"></span>'
@@ -298,7 +345,7 @@ define(function (require, exports, module) {
         renderMetaBar: function () {
             var div = document.createElement('div');
 
-            div.innerHTML = '<div class="imageview-metabar" data-role="imageview-metabar"></div>'
+            div.innerHTML = '<div class="imageview-metabar" data-role="imageview-metabar"></div>';
 
             this.main.appendChild(div.firstChild);
         },
@@ -357,18 +404,28 @@ define(function (require, exports, module) {
             if (options.hasToolBar) {
                 this.main.querySelector('[data-role="totalPic"]').textContent = this.length;
             }
+
             if (options.hasMetaBar) {
-                this.refreshMeta();
+                var metabar = this.main.querySelector('[data-role="imageview-metabar"]');
+
+                if (typeof options.hasMetaBar === 'string') {
+                    // dom selector
+                    if (options.elem) {
+                        metabar.textContent = options.elem.querySelector(options.hasMetaBar).textContent;
+                    }
+                    // text
+                    else {
+                        metabar.textContent = options.hasMetaBar;
+                    }
+                }
             }
         },
 
-        refreshMeta: function () {
-            var options = this.options;
-
-            this.main.querySelector('[data-role="imageview-metabar"]').textContent = options.elem.querySelector(options.hasMetaBar).textContent;
-        },
-
         show: function () {
+            if (this.showing) {
+                return;
+            }
+
             var me = this;
 
             var options = this.options;
@@ -387,7 +444,7 @@ define(function (require, exports, module) {
                     me.realHide();
 
                     window.removeEventListener('popstate', popstateEvent);
-                }
+                };
 
                 history.pushState({}, '查看相册');
 
@@ -398,6 +455,10 @@ define(function (require, exports, module) {
         },
 
         hide: function () {
+            if (!this.showing) {
+                return;
+            }
+
             this.mask.classList.remove('visible');
 
             this.showing = false;
@@ -429,10 +490,10 @@ define(function (require, exports, module) {
 
             // 修正index, 回弹不触发
             if (index !== cur) {
-                cur = options.cur = Math.max(0, Math.min(index, len - 1));
+                cur = options.cur = this.amend(index);
             }
 
-            $(this).trigger('pagechange', cur);
+            this.fire('pagechange', cur);
 
             this.move(-cur / len * 100, speed);
 
@@ -446,6 +507,12 @@ define(function (require, exports, module) {
             }
         },
 
+        amend: function (index) {
+            var total = this.length;
+
+            return Math.max(0, Math.min(index, total - 1));
+        },
+
         move: function (dist, speed) {
             var cssText = ''
                 + '-webkit-transform: translate3d(' + dist + '%, 0, 0) scale3d(1, 1, 1);'
@@ -454,7 +521,7 @@ define(function (require, exports, module) {
             if (this.options.animate) {
                 cssText += ''
                     + '-webkit-transition: -webkit-transform ' + (speed || 0) + 'ms;'
-                    + 'transition: transform ' + (speed || 0) + 'ms;'
+                    + 'transition: transform ' + (speed || 0) + 'ms;';
             }
 
             this.wrapper.style.cssText += cssText;
@@ -475,6 +542,57 @@ define(function (require, exports, module) {
             this.viewH = null;
 
             this.showing = null;
+        },
+
+        delPic: function (index) {
+            var options = this.options;
+
+            var wrapper = this.wrapper;
+
+            var total = this.length;
+
+            var cb = options.delCallback;
+
+            if (index == null) {
+                index = options.cur;
+            }
+
+            index = this.amend(index);
+
+            // only one picture
+            if (total === 1) {
+
+                if (cb) {
+                    cb(index, total);
+                }
+
+                return true;
+            }
+
+            if (index < total - 1) {
+                this.go();
+            }
+            else {
+                this.prev();
+            }
+
+            options.imgSource = options.imgSource.splice(index, 1);
+
+            total = this.length = options.imgSource.length;
+
+            wrapper.removeChild(wrapper.querySelectorAll('[data-role="imageview-item"]')[index]);
+
+            this.refreshImagePos();
+
+            if (options.hasToolBar) {
+                this.main.querySelector('[data-role="totalPic"]').textContent = total;
+            }
+
+            if (cb) {
+                cb(index, total);
+            }
+
+            return false;
         }
     };
 
@@ -524,6 +642,7 @@ define(function (require, exports, module) {
      *
      * @param {Object} target 目标对象
      * @param {Object=} source 源对象
+     * @return {Object} target
      */
     function extend(target, source) {
         for (var i = 1, len = arguments.length; i < len; i++) {
@@ -541,6 +660,8 @@ define(function (require, exports, module) {
         }
         return target;
     }
+
+    Emitter.mixTo(ImageView);
 
     module.exports = ImageView;
 
