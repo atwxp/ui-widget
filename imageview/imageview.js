@@ -44,14 +44,13 @@ define(function (require, exports, module) {
 
             allowHistory: false,
 
-            hasBack: true,
-
-            delCallback: function () {}
+            hasBack: true
         },
 
         init: function (options) {
+            this.loadedArr = [];
 
-            var options = extend(this.options, options);
+            options = extend(this.options, options);
 
             this.initViewport();
 
@@ -160,6 +159,13 @@ define(function (require, exports, module) {
             [].forEach.call(this.albums, function (node) {
                 node.style.width = viewW + 'px';
                 node.style.height = viewH + 'px';
+
+                if (node.querySelector('img')) {
+                    imageResizeToCenter(node.querySelector('img'), {
+                        width: viewW,
+                        height: viewH
+                    });
+                }
             });
 
             wrapper.style.width = viewW * len + 'px';
@@ -188,6 +194,7 @@ define(function (require, exports, module) {
                 me.initViewport();
 
                 me.refreshImagePos();
+
             }, false);
 
             this.on('pagechange', function (index) {
@@ -218,9 +225,13 @@ define(function (require, exports, module) {
         loadImage: function (pos) {
             var len = this.length;
 
-            if (pos < 0 || pos >= len) {
+            var loadedArr = this.loadedArr;
+
+            if (pos < 0 || pos >= len || loadedArr.indexOf(pos) > -1) {
                 return;
             }
+
+            loadedArr.push(pos);
 
             var node = this.albums[pos];
 
@@ -537,6 +548,7 @@ define(function (require, exports, module) {
             this.wrapper = null;
             this.albums = null;
 
+            this.loadedArr = null;
             this.length = null;
             this.viewW = null;
             this.viewH = null;
@@ -551,8 +563,6 @@ define(function (require, exports, module) {
 
             var total = this.length;
 
-            var cb = options.delCallback;
-
             if (index == null) {
                 index = options.cur;
             }
@@ -562,11 +572,9 @@ define(function (require, exports, module) {
             // only one picture
             if (total === 1) {
 
-                if (cb) {
-                    cb(index, total);
-                }
+                this.fire('delPic', index, total);
 
-                return true;
+                return;
             }
 
             if (index < total - 1) {
@@ -588,11 +596,11 @@ define(function (require, exports, module) {
                 this.main.querySelector('[data-role="totalPic"]').textContent = total;
             }
 
-            if (cb) {
-                cb(index, total);
-            }
+            this.fire('delPic', index, total);
+        },
 
-            return false;
+        addPic: function () {
+
         }
     };
 
@@ -630,6 +638,7 @@ define(function (require, exports, module) {
 
         img.style.width = w + 'px';
         img.style.height = h + 'px';
+        img.style['margin-top'] = 0;
 
         // 高度不足, 需垂直居中（水平居中CSS已处理了）
         if (h < sh) {

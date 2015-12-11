@@ -28,7 +28,7 @@
         return parent[all ? 'querySelectorAll' : 'querySelector'](selector);
     };
     /**
-     * @desc 复制source属性到target，覆盖target同名属性
+     * 复制source属性到target，覆盖target同名属性
      * @param {Object}       target 目标对象
      * @param {Array.Object} source 源对象
      */
@@ -48,7 +48,7 @@
         }
     };
     /**
-     * @desc 给元素添加, 删除, toggle类
+     * 给元素添加, 删除, toggle类
      * @param {HTMLElement}  elem       DOM元素
      * @param {string}  action          操作 add || remove || toggle
      * @param {Array.string} className  类名(数组或者字符串)
@@ -104,6 +104,31 @@
         touch: 'ontouchstart' in window,
         transitions: supportCSS('transition')
     };
+
+    var vendor = (function (temp) {
+        var vendors = ['t', 'webkitT', 'MozT', 'OT', 'msT'],
+        dummyStyle = temp.style;
+
+        for (var i = 0, len = vendors.length; i < len; i++) {
+            var t = vendors[i] + 'ransform';
+
+            if (t in dummyStyle) {
+                return vendors[i].slice(0, vendors[i].length - 1);
+            }
+        }
+        return false;
+    })(document.createElement('div'));
+
+    var trsEnd = (function (){
+        var transitionEnd = {
+            '': 'transitonend',
+            'webkit': 'webkitTransitionEnd',
+            'Moz': 'transitionend',
+            'ms': 'transitionend',
+            'O': 'otransitionend'
+        };
+        return transitionEnd[vendor];
+    })();
 
     /******** 事件发射器 ********/
     var Events = {
@@ -237,7 +262,7 @@
      * @param {HTMLElement}   options.container       滑动的容器
      * @param {HTMLElement}   options.nav             指示位置的圈圈
      * @param {number}        options.cur             当前面板索引
-     * @param {boolean}       options.isPrev          滑动方向，默认是向右
+     * @param {boolean}       options.direction       滑动方向，默认是向左
      * @param {number}        options.isAni           是否开启CSS3动画
      * @param {boolean}       options.loop            是否循环播放
      * @param {boolean}       options.aniTime         动画时间
@@ -245,14 +270,15 @@
      */
     function Swiper(options) {
         var defaults = {
-            container: '',
-            nav: '',
+            container: null,
+            nav: null,
             cur: 0,
-            isPrev: false,
+            direction: 'left',
             isAni: true,
             loop: false,
             autoplay: 2000,
-            aniTime: 400
+            aniTime: 400,
+            proportion: .5
         };
 
         extend(this, defaults, options);
@@ -260,66 +286,73 @@
 
     Swiper.prototype = {
         init: function () {
-            this.len = this.container && this.container.children.length;
+            var container = this.container;
+
+            var slides = this.slides = container && container.children;
+
+            var realLen = this.realLen = slides.length;
 
             // 容器不存在 OR 容器不存在子元素 OR 不支持touch
-            if (!browser.touch || !this.len) {
+            if (!browser.touch || !realLen) {
                 return;
             }
 
-            forEach.call(this.container.children, function (slide, index) {
+            forEach.call(slides, function (slide, index) {
                 slide.setAttribute('data-index', index);
             });
-            this.slides = this.container.children;
-            this.realLen = this.slides.length;
 
-            this._bindEvents();
-            this._renderNav();
-            this._repos();
-            this._start();
-        },
-        _renderNav: function () {
-            this.nav.innerHTML = new Array(this.len + 1).join('<i></i>');
+            this.bindEvents();
 
-            this.trigger('navChange', this.cur);
+            this.repos();
+
+            this.start();
         },
-        updateNav: function (cur) {
+
+        toggleNav: function (cur) {
+            if (!this.nav) {
+                return;
+            }
+
             var dots = $('i', this.nav, true);
 
-            forEach.call(dots, function (item, index) {
+            var realLen = this.realLen;
+
+            forEach.call(dots, function (item) {
                 toggleClass(item, 'remove', 'active');
             });
 
-            toggleClass(dots[this.slides[cur].getAttribute('data-index')], 'add', 'active');
+            toggleClass(dots[cur % realLen], 'add', 'active');
         },
-        _repos: function () {
+
+        repos: function () {
+            var me = this;
+
+            var cur = this.cur;
+
+            var container = this.container;
+
+            var slides = this.slides;
+
             // 只有一个slide
-            if (this.len < 2) {
+            if (slides.length < 2) {
                 return;
             }
 
-            var me = this;
-            var cur = me.cur;
-            var container = me.container;
-
             // getBoundingClientRect(): border + padding + width, 返回top, right, bottom, left, width, heihgt
-            var width = me.width = container.getBoundingClientRect().width || container.offsetWidth;
+            var width = this.width = container.getBoundingClientRect().width || container.offsetWidth;
 
             // loop状态&&子元素个数小于三个，无法循环轮播，需要复制已有节点
-            if (this.loop && this.len < 3) {
-                var childs = this.container.children;
+            if (this.loop && slides.length < 3) {
+                container.appendChild(slides[0].cloneNode(true));
+                container.appendChild(slides[1].cloneNode(true));
 
-                container.appendChild(childs[0].cloneNode(true));
-                container.appendChild(childs[1].cloneNode(true));
-
-                me.slides = container.children;
+                this.slides = slides = container.children;
             }
 
-            me.len = me.slides.length;
-            me.slidePos = new Array(me.len);
+            this.slidePos = new Array(slides.length);
 
-            // 以 me.cur 为界, 小于cur的移到-width, 大于cur的移到width
-            forEach.call(me.slides, function (slide, index) {
+            // 以 this.cur 为界, 小于cur的移到-width, 大于cur的移到width
+            forEach.call(slides, function (slide, index) {
                 var dist = index < cur ? -width : (index > cur ? width : 0);
 
                 me._translate(index, dist, 0);
@@ -329,47 +362,71 @@
                 this._translate(this.circle(cur - 1), -width, 0);
                 this._translate(this.circle(cur + 1), width, 0);
             }
+
+            if (this.nav) {
+
+                this.nav.innerHTML = new Array(slides.length + 1).join('<i></i>');
+
+                this.nav.querySelectorAll('i')[cur].classList.add('active');
+            }
         },
+
         circle: function (num) {
+            var len = this.slides.length;
+
             if (num < 0) {
                 // return this.len - 1;
-                return this.len + num;
+                return len + num;
             }
-            else if (num >= this.len) {
+
+            else if (num >= len) {
                 // return 0;
-                return num - this.len;
+                return num - len;
             }
+
             return num;
         },
+
         // 设置了autoplay, 才执行
-        _start: function () {
-            if (this.autoplay !== false) {
-                this.timer = setTimeout(this[this.isPrev ? 'prev' : 'next'].bind(this), this.autoplay);
+        start: function () {
+            console.log('start')
+            if (typeof this.autoplay === 'number') {
+                this.timer = setTimeout(
+                    this[this.direction === 'right' ? 'prev' : 'next'].bind(this),
+                    this.autoplay
+                );
             }
         },
+
         // 停止自动播放
-        _stop: function () {
+        stop: function () {
+
             clearTimeout(this.timer);
+
             this.timer = null;
         },
+
         next: function () {
             // 处理循环
             if (this.loop) {
                 this.go(this.cur + 1);
             }
-            else if (this.cur < this.len - 1) {
+            else if (this.cur < this.slides.length - 1) {
                 this.go(this.cur + 1);
             }
         },
+
         prev: function () {
             // 处理循环
             if (this.loop) {
                 this.go(this.cur - 1);
             }
+
             else if (this.cur > 0) {
                 this.go(this.cur - 1);
             }
         },
+
         go: function (cur) {
             var old = this.cur;
 
@@ -390,17 +447,18 @@
             }
 
             this.cur = cur;
-
-            // 简单的触发回调事件
-            this.trigger('slideChange', cur, this.slides[cur]);
-            this.trigger('navChange', cur);
         },
+
         _translate: function (cur, dist, duration) {
+
             this.slidePos[cur] = dist;
+
             this._move(cur, dist, duration);
         },
+
         _move: function (cur, dist, duration) {
             var slide = this.slides[cur];
+
             var style = slide && slide.style;
 
             if (!style) {
@@ -419,78 +477,92 @@
 
             }
         },
-        _transitionEnd: function (e) {
+
+        transitionEnd: function (e) {
             var cur = this.cur;
 
             if (parseInt(e.target.getAttribute('data-index'), 10) === cur % this.realLen) {
-                this._start();
-                this.trigger('transitionEnd', cur, this.slides[cur]);
+
+                this.start();
+
+                this.trigger('pagechange', cur, this.slides[cur]);
             }
         },
-        _bindEvents: function () {
-            this.on('navChange', this.updateNav);
 
-            this.container.addEventListener('webkitTransitionEnd', this._transitionEnd.bind(this), false);
-            this.container.addEventListener('transitionend', this._transitionEnd.bind(this), false);
+        bindEvents: function () {
+            var container = this.container;
+
+            var me = this;
+
+            ['transitonend', 'webkitTransitionEnd', 'otransitionend'].forEach(function (type) {
+                container.addEventListener(type, me.transitionEnd.bind(me), false);
+            });
 
             this
-                .on('swipestart', function (e) {
+                .on('swipestart', function () {
                 })
                 .on('move', function (e, dir, dist) {
                     if (dir === 'left' || dir === 'right') {
                         e.preventDefault();
 
-                        this._stop();
+                        this.stop();
 
                         var cur = this.cur;
 
+                        var slidePos = this.slidePos;
+
                         if (!this.loop) {
-                            dist = dist / ((cur === 0 && dir === 'right') || (cur === this.len - 1 && dir === 'left') ? Math.abs(dist) + 1 : 1);
-                            this._move(cur - 1, this.slidePos[cur - 1] + dist, 0);
-                            this._move(cur, this.slidePos[cur] + dist, 0);
-                            this._move(cur + 1, this.slidePos[cur + 1] + dist, 0);
+                            dist = dist / ((cur === 0 && dir === 'right') || (cur === this.slides.length - 1 && dir === 'left') ? Math.abs(dist) + 1 : 1);
+                            this._move(cur - 1, slidePos[cur - 1] + dist, 0);
+                            this._move(cur, slidePos[cur] + dist, 0);
+                            this._move(cur + 1, slidePos[cur + 1] + dist, 0);
                         }
                         else {
-                            this._move(this.circle(cur - 1), this.slidePos[this.circle(cur - 1)] + dist, 0);
-                            this._move(cur, this.slidePos[cur] + dist, 0);
-                            this._move(this.circle(cur + 1), this.slidePos[this.circle(cur + 1)] + dist, 0);
+                            this._move(this.circle(cur - 1), slidePos[this.circle(cur - 1)] + dist, 0);
+                            this._move(cur, slidePos[cur] + dist, 0);
+                            this._move(this.circle(cur + 1), slidePos[this.circle(cur + 1)] + dist, 0);
                         }
-
                     }
                 })
                 .on('swipeleft', function (e, dist) {
                     console.log('swipeleft');
                     this.next();
-                    this._move(this.circle(this.cur - 2), this.slidePos[this.circle(this.cur - 2)], 0);
+                    // 没懂这句话干嘛的
+                    // this._move(this.circle(this.cur - 2), this.slidePos[this.circle(this.cur - 2)], 0);
                 })
                 .on('swiperight', function (e, dist) {
                     console.log('swiperight');
                     this.prev();
-                    this._move(this.circle(this.cur + 2), this.slidePos[this.circle(this.cur + 2)], 0);
+                    // this._move(this.circle(this.cur + 2), this.slidePos[this.circle(this.cur + 2)], 0);
                 })
                 .on('release', function (e, dist) {
                     var cur = this.cur;
+
+                    var aniTime = this.aniTime;
+
                     var width = this.width;
 
+                    if (Math.abs(dist) >= width * this.proportion) {
+                        this.trigger(dist < 0 ? 'swipeleft' : 'swiperight');
+                        return;
+                    }
+
                     if (!this.loop) {
-                        if (Math.abs(dist) * 2 >= width) {
-                            console.log('release over half');
-                            this.trigger(dist < 0 ? 'swipeleft' : 'swiperight');
-                        }
-                        else {
-                            this._move(cur - 1, -width, this.aniTime);
-                            this._move(cur, 0, this.aniTime);
-                            this._move(cur + 1, width, this.aniTime);
-                        }
+                        this._move(cur - 1, -width, aniTime);
+                        this._move(cur, 0, aniTime);
+                        this._move(cur + 1, width, aniTime);
                     }
                     else {
-                        this._move(this.circle(cur - 1), -width, this.aniTime);
+                        this._move(this.circle(cur - 1), -width, aniTime);
                         this._move(cur, 0, this.aniTime);
-                        this._move(this.circle(cur + 1), width, this.aniTime);
+                        this._move(this.circle(cur + 1), width, aniTime);
                     }
+                })
+                .on('pagechange', function (cur, elem) {
+                    me.toggleNav(cur);
                 });
 
-            ontouch(this.container, this);
+            ontouch(container, this);
         }
     };
 
