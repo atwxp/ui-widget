@@ -370,6 +370,7 @@ define(function (require, exports, module) {
             var elem = this.options.elem;
 
             if (container !== elem) {
+                this.loadedArr = [];
 
                 this.options.elem = container;
 
