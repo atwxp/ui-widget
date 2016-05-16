@@ -541,20 +541,6 @@ define(function (require, exports, module) {
 
         dispose: function () {
             document.body.removeChild(this.mask);
-
-            this.options = null;
-
-            this.mask = null;
-            this.main = null;
-            this.wrapper = null;
-            this.albums = null;
-
-            this.loadedArr = null;
-            this.length = null;
-            this.viewW = null;
-            this.viewH = null;
-
-            this.showing = null;
         },
 
         delPic: function (index) {
