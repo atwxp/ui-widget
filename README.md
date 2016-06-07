@@ -12,9 +12,9 @@
 
 ### event
 
-`on('pagechange', cur)`：翻页触发
+`on('pagechange', function (cur) {})`：翻页触发
 
-`on('delPic', index, total)`：删除图片触发
+`on('delPic', function (index, total) {})`：删除图片触发
 
 ### demo
 
@@ -95,7 +95,7 @@
             .init();
 
     }, false);
-    
+   
 ### Refer
     
 [thebird swipe](https://github.com/thebird/Swipe)
