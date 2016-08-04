@@ -71,7 +71,7 @@ define(function (require, module, exports) {
 
         this.main = document.querySelector(options.main);
 
-        if (!this.main) {
+        if (!this.main || options.pinNum <= 0) {
             return;
         }
 
@@ -150,6 +150,12 @@ define(function (require, module, exports) {
     };
 
     WaterFall.prototype.load = function () {
+        if (this.xhr) {
+            return;
+        }
+
+        this.fire('loading');
+
         var options = this.options;
 
         var me = this;
@@ -163,7 +169,7 @@ define(function (require, module, exports) {
             url: options.url,
             data: params,
             success: function (res) {
-                if (res.errno) {
+                if (res.errno || !res.data) {
                     console.log('err');
                     return;
                 }
@@ -185,11 +191,20 @@ define(function (require, module, exports) {
 
             if (bc && !bc.done && this.cur === i) {
                 this.runStep(bc);
+                
+                if (this.cur === l) {
+                    this.fire('loaded');
+                }
             }
         }
     };
 
     WaterFall.prototype.runStep = function (bc) {
+        if (!bc.loaded) {
+            this.cur++;
+            return;
+        }
+
         var box = bc.box;
 
         var minIndex = getMin(this.pinH);
@@ -217,10 +232,11 @@ define(function (require, module, exports) {
 
         for (var i = 0, l = data.length; i < l; i++) {
             (function (idx) {
-                me.createBox(data[idx], function (box) {
+                me.createBox(data[idx], function (box, loaded) {
                     me.boxCache[idx] = {
                         box: box,
-                        done: false
+                        done: false,
+                        loaded: loaded
                     };
 
                     me.runTask();
@@ -237,11 +253,11 @@ define(function (require, module, exports) {
         img.addEventListener('load', function () {
             box.appendChild(img);
 
-            callback(box);
+            callback(box, true);
         }, false);
 
         img.addEventListener('error', function () {
-
+            callback(box, false);
         }, false);
 
         img.src = data.url;
