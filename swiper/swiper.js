@@ -1,3 +1,8 @@
+/**
+ * @file   swiper widget
+ * @author wxp201013@163.com
+ */
+
 define(function (require, exports, module) {
 
     var util = require('common/lib/util');
@@ -20,6 +25,8 @@ define(function (require, exports, module) {
      * @param {number}        options.autoplay        是否自动播放，是的话指定间隔时长，否的话false
      * @param {number}        options.proportion      滑动的阈值
      * @param {boolean}       options.allowGesture    是否开启手势滑动
+     * @param {number}        options.threshold      最小滑动距离
+     * @param {number}        options.restraint      垂直方向最大滑动距离
      * @param {number}        options.allowedTime    允许的滑动时间
      * @param {boolean}       options.disableScroll  是否禁用滚动, 阻止系统滚动发生
      */
@@ -34,7 +41,11 @@ define(function (require, exports, module) {
             aniTime: 400,
             proportion: .5,
             allowGesture: true,
-            disableScroll: false
+            disableScroll: false,
+            initStart: true,
+            type: '',
+            preload: 0,
+            dataSrc: 'data-src'
         };
 
         util.extend(this.options, options);
@@ -51,17 +62,22 @@ define(function (require, exports, module) {
                 && document instanceof window.DocumentTouch)
                 && options.allowGesture;
 
-        this.container = options.container;
-        this.nav = options.nav;
+        var container = this.container = options.container;
 
-        this.slides = this.container && this.container.children;
+        this.nav = options.nav;
+        this.oldCur = this.cur = options.cur;
+
+        this.slides = container && container.children;
         this.realLen = this.slides && this.slides.length;
-        this.cur = options.cur;
 
         // 容器不存在 OR 容器不存在子元素
-        if (!this.container || !this.realLen) {
+        if (!container || !this.realLen) {
             return;
         }
+
+        var rect = container.getBoundingClientRect();
+        this.width = rect.width || container.offsetWidth;
+        this.height = rect.height || container.offsetHeight;
 
         // 不支持transition OR 只有一个slide
         if (!util.supportCSS('transition') || this.realLen === 1) {
@@ -74,8 +90,12 @@ define(function (require, exports, module) {
         });
 
         this.bindEvents();
-        this.repos();
-        this.start();
+
+        if (options.initStart) {
+            this.repos();
+
+            this.start();
+        }
     };
 
     Swiper.prototype.bindEvents = function () {
@@ -182,9 +202,76 @@ define(function (require, exports, module) {
             })
             .on('pagechange', function (evt, cur, elem) {
                 me.toggleNav(cur);
+
+                // preload img
+                if (options.type === 'img') {
+                    me.preloadImg();
+                }
             });
 
         ontouch(container, this, options);
+    };
+
+    Swiper.prototype.preloadImg = function () {
+
+        var cur = this.cur;
+        var imgs = this.slides;
+        var total = imgs.length;
+
+        var options = this.options;
+        var dataSrc = options.dataSrc;
+
+        var me = this;
+
+        var size = {
+            w: this.width,
+            h: this.height
+        };
+
+        var loadImage = function (elem, callback) {
+            if (elem.lazyload) {
+                return;
+            }
+
+            var img = elem.querySelector('img');
+
+            elem.lazyload = 'loading';
+
+            img.addEventListener('load', function () {
+
+                me.fire('preload', [img, size]);
+
+                elem.classList.add('contain');
+
+                elem.lazyload = 'load';
+
+            }, false);
+
+            img.addEventListener('error', function () {
+                elem.lazyload = null;
+            }, false);
+
+            img.src = img.getAttribute(dataSrc);
+        };
+
+        var amend = function (num, len) {
+            if (num < 0) {
+                return 0;
+            }
+
+            else if (num >= len) {
+                return len - 1;
+            }
+
+            return num;
+        };
+
+        loadImage(imgs[amend(cur, total)]);
+        for (var i = 1; i <= options.preload; i++) {
+            loadImage(imgs[amend(cur - i, total)]);
+
+            loadImage(imgs[amend(cur + i, total)]);
+        }
     };
 
     Swiper.prototype.toggleNav = function (cur) {
@@ -214,7 +301,7 @@ define(function (require, exports, module) {
 
         // getBoundingClientRect(): border + padding + width,
         // 返回top, right, bottom, left, width, heihgt
-        var width = this.width = container.getBoundingClientRect().width || container.offsetWidth;
+        var width = this.width;
 
         if (!options.direction) {
 
@@ -322,6 +409,16 @@ define(function (require, exports, module) {
 
         this.stop();
 
+        if (!options.initStart) {
+            this.repos();
+            options.initStart = true;
+        }
+
+        if (!this.inited) {
+            this.fire('pagechange', [this.cur, this.slides.length, this.slides[this.cur]]);
+            this.inited = true;
+        }
+
         if (typeof options.autoplay === 'number') {
             this.timer = setTimeout(
                 this[
@@ -331,6 +428,7 @@ define(function (require, exports, module) {
                 options.autoplay
             );
         }
+
     };
 
     Swiper.prototype.stop = function () {
@@ -360,7 +458,7 @@ define(function (require, exports, module) {
         var options = this.options;
         var aniTime = options.aniTime;
 
-        var old = this.cur;
+        var old = this.oldCur = this.cur;
 
         if (cur === old) {
             return;
@@ -410,11 +508,16 @@ define(function (require, exports, module) {
     Swiper.prototype.transitionEnd = function (e) {
         var cur = this.cur;
 
-        if (parseInt(e.target.getAttribute('data-index'), 10) === cur % this.realLen) {
+        if (
+            parseInt(e.target.getAttribute('data-index'), 10) === cur % this.realLen
+            && this.oldCur !== this.cur
+        ) {
 
             this.start();
 
             this.fire('pagechange', [cur, this.slides.length, this.slides[cur]]);
+
+            this.oldCur = this.cur;
         }
     };
 
