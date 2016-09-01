@@ -269,11 +269,17 @@ define(function (require, exports, module) {
 
         box.className = 'wf-item';
 
-        var img = new Image();
+        box.innerHTML = typeof render === 'string' ? util.format(render, data) : render(data);
+
+        // var img = new Image(); bugs: 在runStep中执行 appendChild() 在获取box.clientHeight在安卓机下获取不到高度，值为0
+        var img = box.querySelector('img');
+
+        if (!img) {
+            callback(box, img, true);
+            return;
+        }
 
         img.addEventListener('load', function () {
-            box.innerHTML = typeof render === 'string' ? util.format(render, data) : render(data);
-
             callback(box, img, true);
         }, false);
 
