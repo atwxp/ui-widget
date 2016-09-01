@@ -111,7 +111,16 @@ define(function (require, exports, module) {
         window.addEventListener('resize', util.throttle(50, this.resize.bind(this)), false);
         window.addEventListener('orientationchange', util.throttle(50, this.resize.bind(this)), false);
 
-        if (!this.options.allowGesture) {
+        this.on('pagechange', function (evt, cur, elem) {
+            me.toggleNav(cur);
+
+            // preload img
+            if (options.type === 'img') {
+                me.preloadImg();
+            }
+        });
+
+        if (!options.allowGesture) {
             return;
         }
 
@@ -198,14 +207,6 @@ define(function (require, exports, module) {
                     this._move(this.circle(cur - 1), -width, aniTime);
                     this._move(cur, 0, aniTime);
                     this._move(this.circle(cur + 1), width, aniTime);
-                }
-            })
-            .on('pagechange', function (evt, cur, elem) {
-                me.toggleNav(cur);
-
-                // preload img
-                if (options.type === 'img') {
-                    me.preloadImg();
                 }
             });
 
