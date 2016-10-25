@@ -1,6 +1,6 @@
 ## lazyload
 
-## 特性
+### 特性
 
 - 默认背景图片
 
@@ -18,7 +18,7 @@
 
 - 图片加载成功的回调函数
 
-## 使用
+### 使用
 
 加载 `./lazyload/index.less`，凡是设置了 `[data-bglazy]` 属性的元素都会自动带有一张默认背景图
 
@@ -114,16 +114,16 @@
 
 - `type` 指定事件类型，如果是通过 `overflow-x:scroll` 实现，需要在能滚动的区域 `container` 监听 `touchmove`
 
-    if (type === 'touchmove') {
-        container.addEventListener(type, detectTh, false);
-    }
+        if (type === 'touchmove') {
+            container.addEventListener(type, detectTh, false);
+        }
 
 - `viewContainer` 就是指定的水平容器，内部代码如下，即如果不指定默认就是 `container` ，如果是 `null` 则是 `viewport`
 
-    var viewContainer = options.viewContainer;
-    if (viewContainer === undefined) {
-        viewContainer = container;
-    }
+        var viewContainer = options.viewContainer;
+        if (viewContainer === undefined) {
+            viewContainer = container;
+        }
 
 水平方向的容器和水平滚动的实现方式有关，具体情况具体分析
 
@@ -135,7 +135,7 @@
 
 ### 异步加载
 
-这种情况出现在 `下拉加载更多ajax请求下一页` 的情况，每次滚动都会重新 `querySelector` 需要懒加载的图片，所以性能这一块待提升（todo）
+这种情况出现在 **下拉加载更多ajax请求下一页** 的情况，每次滚动都会重新 `querySelector` 需要懒加载的图片，所以性能这一块待提升（todo）
 
     lazyload.init('.c-box-similar-img', {
         container: listEle[0],
@@ -182,13 +182,13 @@
 
 - `hasTotal` 标志该列表是否是已知总数的列表
 
-`log` 日志信息 false 表示不发，默认发送以下日志
+- `log` 日志信息 false 表示不发，默认发送以下日志
 
-    var log = {
-        pn: this.page, // 当前页数
-        p: this.cur + 1, // 当前页数第几个
-        i: this.totalLen - this.loadedLen + this.cur + 1 // 总共第几个
-    };
+        var log = {
+            pn: this.page, // 当前页数
+            p: this.cur + 1, // 当前页数第几个
+            i: this.totalLen - this.loadedLen + this.cur + 1 // 总共第几个
+        };
 
 
 ### 事件API
