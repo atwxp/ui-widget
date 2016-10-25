@@ -25,10 +25,6 @@ define(function (require, exports, module) {
      * @param {number}        options.autoplay        是否自动播放，是的话指定间隔时长，否的话false
      * @param {number}        options.proportion      滑动的阈值
      * @param {boolean}       options.allowGesture    是否开启手势滑动
-     * @param {number}        options.threshold      最小滑动距离
-     * @param {number}        options.restraint      垂直方向最大滑动距离
-     * @param {number}        options.allowedTime    允许的滑动时间
-     * @param {boolean}       options.disableScroll  是否禁用滚动, 阻止系统滚动发生
      */
     function Swiper(options) {
         this.options = {
@@ -41,7 +37,6 @@ define(function (require, exports, module) {
             aniTime: 400,
             proportion: .5,
             allowGesture: true,
-            disableScroll: false,
             initStart: true,
             type: '',
             preload: 0,
@@ -79,11 +74,11 @@ define(function (require, exports, module) {
         this.width = rect.width || container.offsetWidth;
         this.height = rect.height || container.offsetHeight;
 
-        // 不支持transition OR 只有一个slide
-        if (!util.supportCSS('transition') || this.realLen === 1) {
-            this.container.classList.add('visible');
-            return;
-        }
+        // todo: 不支持transition 怎么处理？
+        // if (!util.supportCSS('transition') || this.realLen === 1) {
+        //     this.container.classList.add('visible');
+        //     return;
+        // }
 
         util.forEach(slice.call(this.slides), function (slide, index) {
             slide.setAttribute('data-index', index);
@@ -208,7 +203,7 @@ define(function (require, exports, module) {
                     this._move(cur, 0, aniTime);
                     this._move(this.circle(cur + 1), width, aniTime);
                 }
-            });
+            })
 
         ontouch(container, this, options);
     };
@@ -334,7 +329,7 @@ define(function (require, exports, module) {
             }
 
             if (this.nav) {
-                this.nav.innerHTML = new Array(slides.length + 1).join('<i></i>');
+                this.nav.innerHTML = new Array(this.realLen + 1).join('<i></i>');
                 this.nav.querySelectorAll('i')[cur].classList.add('active');
             }
         }
