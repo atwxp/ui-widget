@@ -1,38 +1,7 @@
 define(function (require, exports, module) {
     var $ = require('zepto');
-    var onscroll = require('util/onscroll');
-    var Emitter = require('util/emitter');
-
-    var clone = function (obj) {
-        var ret = {};
-
-        for (var key in obj) {
-            if (obj.hasOwnProperty(key)) {
-                if (typeof obj[key] === 'object') {
-                    ret[key] = clone(obj[key]);
-                }
-                else {
-                    ret[key] = obj[key];
-                }
-            }
-        }
-
-        return ret;
-    };
-
-    var extend = function (target, source, alone) {
-        source = source || {};
-
-        target = alone ? clone(target) : target;
-
-        for (var key in source) {
-            if (source.hasOwnProperty(key)) {
-                target[key] = source[key];
-            }
-        }
-
-        return target;
-    };
+    var util = require('common/lib/util');
+    var Emitter = require('common/lib/emitter');
 
     var getPageOffset = function () {
         var t = document.documentElement || document.body.parentNode;
@@ -74,12 +43,10 @@ define(function (require, exports, module) {
             proportion: .8
         };
 
-        extend(this.options, options);
-
-        this.init();
+        util.extend(this.options, options);
     }
 
-    Emitter.mixTo(PanelView.prototype);
+    Emitter.enable(PanelView.prototype);
 
     PanelView.prototype.init = function () {
         var options = this.options;
@@ -90,7 +57,7 @@ define(function (require, exports, module) {
         var panelNodes = [];
         for (var k in map) {
             if (map.hasOwnProperty(k)) {
-                var nav = main.find(k);                    
+                var nav = main.find(k);
                 var panel = main.find(map[k]);
 
                 if (nav.length && panel.length) {
@@ -152,7 +119,8 @@ define(function (require, exports, module) {
             });
         });
 
-        onscroll.add(this.scrollBack.bind(this));
+        this.scrollBack = util.debounce(50, this.scrollBack.bind(this));
+        window.addEventListener('scroll', this.scrollBack, false);
     };
 
     /**
@@ -188,7 +156,7 @@ define(function (require, exports, module) {
             }
         });
 
-        this.fire('change', cur, this.isInViewport(pageY));
+        this.fire('scroll', [cur, pageY, this.isInViewport(pageY)]);
     };
 
     /**
@@ -215,6 +183,12 @@ define(function (require, exports, module) {
     };
 
     PanelView.prototype.scrollToPanel = function (index) {
+        if (index == null || !this.panelNodes[index]) {
+            return;
+        }
+
+        this.fire('change', [index]);
+
         var thresold = this.options.thresold;
 
         var top = this.panelNodes[index].top;
@@ -227,7 +201,7 @@ define(function (require, exports, module) {
             node.nav.off('click');
         });
 
-        onscroll.remove(this.scrollBack.bind(this));
+        window.removeEventListener('scroll', this.scrollBack);
     };
 
     module.exports = PanelView;

@@ -1,6 +1,6 @@
 ## lazyload
 
-### 特性
+### Feature
 
 - 默认背景图片
 
@@ -18,7 +18,7 @@
 
 - 图片加载成功的回调函数
 
-### 使用
+### Usage
 
 加载 `./lazyload/index.less`，凡是设置了 `[data-bglazy]` 属性的元素都会自动带有一张默认背景图
 
@@ -35,7 +35,7 @@
 
 这段代码会一次性（同步）获取 `document.body` 下所有具有 `[data-lazy]` 属性的元素，获取它的 `data-src`，当检测有元素不可见时，跳过它
 
-### 基本使用
+### basic demo
 
     <div data-bglazy>
         <img data-src="http://" data-lazy />
@@ -45,7 +45,7 @@
         <div data-src="http://" data-lazy></div>
     </div>
 
-### 不可见元素不加载
+### Load Only Visible Element
 
     <ul>
         {%foreach %}
@@ -73,7 +73,7 @@
 
 这是一个很常见的 `点击查看更多` 的功能，对于隐藏的元素我们不对其加载图片，只有当其展开的时候才加载
 
-### 水平方向加载
+### Load In Horizontal
 
 通常我们都是垂直懒加载图片，但是也存在水平滑动的情况，这时需要我们重新调用 `lazyload.init()` 才能符合我们的需求
 
@@ -127,13 +127,13 @@
 
 水平方向的容器和水平滚动的实现方式有关，具体情况具体分析
 
-### 需要对加载的图片进行处理
+### Deal With Loaded Image
 
     lazyload.init('[data-type="clip"]', {
         container: wrapper[0]
     }, clipUser);
 
-### 异步加载
+### Async Load
 
 这种情况出现在 **下拉加载更多ajax请求下一页** 的情况，每次滚动都会重新 `querySelector` 需要懒加载的图片，所以性能这一块待提升（todo）
 
@@ -142,11 +142,138 @@
         isAsync: true
     });
 
-## panelview
+## PanelView
 
-## waterfall
+项目中会存在一些很长的页面需要锚点快速定位，同时需要滚动一定距离 `fixed` 这个 `bar` 到视口之内，效果可参考 [https://m.nuoi.com/]()
 
-### 配置
+### options
+
+    this.options = {
+        main: '',
+        map: {},
+        thresold: 0,
+        proportion: .8
+    };
+
+- `main`: `Zepto`, the wrapper contains for nav&panel
+
+- `map`: `Object`, nav panel map
+
+- `thresold`: `number`, thresold for scroll
+
+- `proportion`: `number`, the body proportion to be change nav
+
+### Prototype Function
+
+- scrollToPanel(index)：手动跳转到第几个 `nav&pagel`
+
+- scrollBack()：`scroll` 事件绑定的回调
+
+- isInViewport(scrollTop)：滚动了 `scrollTop` 距离之后 `panel` 是否还在视口之内
+
+- dispose()：销毁实例
+
+### Event API
+
+- on('scroll', function (e, index, pageY, inview) {})：监听页面滚动事件
+
+- on('change', function (e, index) {})：手动跳转 `scrollToPanel()` 内触发
+
+### Demo
+
+    <div class="wrapper">
+        <div class="tab">
+            <div class="tab-title">
+                <ul>
+                    <li class="nav-item nav-item1">nav1</li>
+                    <li class="nav-item nav-item2">nav2</li>
+                    <li class="nav-item nav-item3">nav3</li>
+                <ul>
+                <span class="nav-line" style="width:33.3%;"></span>
+            </div>
+        </div>
+
+        <div class="panel-item1"></div>
+        <div class="panel-item2"></div>
+        <div class="panel-item3"></div>
+    </div>
+
+    // less
+    .tab {
+        height: 44px;
+        .tab-title {
+            position: relative;
+            &.fixed {
+                position: fixed;
+                left: 0;
+                top: 0;
+                right: 0;
+            }
+        }
+        .nav-item {
+            text-align: center;
+
+            &.nav-item-active {
+                color: #0067fd;
+            }
+        }
+        .nav-line {
+            opacity: 0;
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            height: 1px;
+            -webkit-transition: transform .5s;
+            transition: transform .5s;
+
+            &.nav-line-active {
+                opacity: 1;
+            }
+        }
+    }
+
+    // js
+    var wrapper = $('.wrapper');
+    var nav = $('.tab');
+    var navItems = nav.find('.nav-item');
+    var navLine = nav.find('.nav-line');
+
+    var navTop = nav.offset().top;
+    var map = {};
+    navItems.each(function (i) {
+        map['.nav-item' + (i + 1)] = '.panel-item' + (i + 1);
+    });
+    var pview = new Panelview({
+        main: wrapper,
+        map: map,
+        thresold: -44
+    });
+    var toggleShow = function (cur, inview) {
+        navLine[inview ? 'addClass' : 'removeClass']('nav-line-active');
+        navLine.css({
+            '-webkit-transform': 'translateX(' + 100 * cur + '%)',
+            'transform': 'translateX(' + 100 * cur + '%)'
+        });
+        navItems.removeClass('nav-item-active').eq(cur).addClass('nav-item-active');
+    };
+
+    // 手动点击nav
+    pview.on('change', function () {
+        nav.addClass('fixed');
+    });
+    // 页面滚动事件
+    pview.on('scroll', function (e, cur, pageY, inview) {
+        nav[pageY > navTop ? 'addClass' : 'removeClass']('fixed');
+        toggleShow(cur, inview);
+    });
+    pview.init();
+
+    // 页面初始化时高亮
+    pview.scrollBack();
+
+## Waterfall
+
+### options
 
     options = util.extend({
         main: null,
@@ -191,7 +318,7 @@
         };
 
 
-### 事件API
+### Event API
 
 有三个事件
 
@@ -263,7 +390,7 @@
           });
       };
 
-### 使用
+### Usage
 
     // 页面内引入下面的 html 片段
     <div class="g-waterfall">
@@ -301,9 +428,9 @@
         initLoad: true
     });
 
-## swiper
+## Swiper
 
-## imageview
+## Imageview
 
 移动端图片预览器，依赖 `Hammer` 手势库，支持的功能：
 
