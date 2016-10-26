@@ -50,9 +50,21 @@ define(function (require, exports, module) {
 
     PanelView.prototype.init = function () {
         var options = this.options;
-        var map = options.map;
 
-        var main = this.main = $(options.main);
+        this.main = $(options.main);
+
+        this.cur = 0;
+
+        this.updatePanelNode();
+
+        this.bindEvent();
+    };
+
+    PanelView.prototype.updatePanelNode = function () {
+        var main = this.main;
+
+        var options = this.options;
+        var map = options.map;
 
         var panelNodes = [];
         for (var k in map) {
@@ -70,14 +82,10 @@ define(function (require, exports, module) {
                 }
             }
         }
-
         if (!panelNodes.length) {
             return;
         }
-
         this.panelNodes = this.sortPanel(panelNodes);
-
-        this.bindEvent();
     };
 
     /**
@@ -119,6 +127,13 @@ define(function (require, exports, module) {
             });
         });
 
+        window.addEventListener('resize', function () {
+            me.updatePanelNode();
+        }, false);
+        window.addEventListener('orientationchange', function () {
+            me.updatePanelNode();
+        }, false);
+
         this.scrollBack = util.debounce(50, this.scrollBack.bind(this));
         window.addEventListener('scroll', this.scrollBack, false);
     };
@@ -133,7 +148,7 @@ define(function (require, exports, module) {
 
         var panelNodes = this.panelNodes;
 
-        var pageY = getPageOffset().y;
+        var pageY = util.getPageOffset().y;
         var len = panelNodes.length;
         var min = 9999;
         var cur = 0;
@@ -156,7 +171,11 @@ define(function (require, exports, module) {
             }
         });
 
-        this.fire('scroll', [cur, pageY, this.isInViewport(pageY)]);
+        this.fire('scroll', [this.cur, cur, pageY, this.isInViewport(pageY)]);
+
+        if (cur !== this.cur) {
+            this.cur = cur;
+        }
     };
 
     /**
@@ -186,6 +205,8 @@ define(function (require, exports, module) {
         if (index == null || !this.panelNodes[index]) {
             return;
         }
+
+        this.cur = index;
 
         this.fire('change', [index]);
 

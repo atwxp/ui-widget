@@ -165,19 +165,23 @@
 
 ### Prototype Function
 
-- scrollToPanel(index)：手动跳转到第几个 `nav&pagel`
+- `scrollToPanel(index)`：手动跳转到第几个 `nav&pagel`
 
-- scrollBack()：`scroll` 事件绑定的回调
+- `scrollBack()`：`scroll` 事件绑定的回调
 
-- isInViewport(scrollTop)：滚动了 `scrollTop` 距离之后 `panel` 是否还在视口之内
+- `isInViewport(scrollTop)`：滚动了 `scrollTop` 距离之后 `panel` 是否还在视口之内
 
-- dispose()：销毁实例
+- `dispose()`：销毁实例
+
+### Props
+
+- `this.cur`：当前高亮的索引
 
 ### Event API
 
-- on('scroll', function (e, index, pageY, inview) {})：监听页面滚动事件
+- `on('scroll', function (e, oldCur, cur, pageY, inview) {})`：监听页面滚动事件
 
-- on('change', function (e, index) {})：手动跳转 `scrollToPanel()` 内触发
+- `on('change', function (e, cur) {})`：手动跳转 `scrollToPanel()` 内触发
 
 ### Demo
 
@@ -262,9 +266,14 @@
         nav.addClass('fixed');
     });
     // 页面滚动事件
-    pview.on('scroll', function (e, cur, pageY, inview) {
+    pview.on('scroll', function (e, oldCur, cur, pageY, inview) {
         nav[pageY > navTop ? 'addClass' : 'removeClass']('fixed');
         toggleShow(cur, inview);
+
+        // 索引发生改变
+        if (oldCur !== cur) {
+            sendLog();
+        }
     });
     pview.init();
 
