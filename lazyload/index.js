@@ -144,10 +144,12 @@ define(function (require, exports, module) {
                 dispose();
             }
             // 适口发生变化才重新计算适口大小
-            if (eventType === 'resize' || eventType === 'orientationchange') {
+            // todo：如何获取正确的视口大小
+            // 在ajax获取页面结果或者有其他lazy图片导致页面高度发生变化视口高度获取不准确
+            // if (eventType === 'resize' || eventType === 'orientationchange') {
                 viewSize = getViewport(null, isHorizontal);
                 containerSize = isContainer ? getViewport(viewContainer, isContainerHorizontal) : {};
-            }
+            // }
 
             for (var i = 0, len = elements.length; i < len; i++) {
                 var elem = elements[i];

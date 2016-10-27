@@ -84,6 +84,12 @@ define(function (require, exports, module) {
             slide.setAttribute('data-index', index);
         });
 
+        if (this.realLen === 1) {
+            options.loop = false;
+            options.autoplay = false;
+            options.allowGesture = false;
+        }
+
         this.bindEvents();
 
         if (options.initStart) {
@@ -306,8 +312,8 @@ define(function (require, exports, module) {
             });
         }
         else {
-            // loop状态&&子元素个数小于三个，无法循环轮播，需要复制已有节点
-            if (options.loop && this.realLen < 3) {
+            // loop状态&&子元素个数等于2个，无法循环轮播，需要复制已有节点
+            if (options.loop && this.realLen === 2) {
                 container.appendChild(slides[0].cloneNode(true));
                 container.appendChild(slides[1].cloneNode(true));
 
@@ -328,7 +334,7 @@ define(function (require, exports, module) {
                 this._translate(this.circle(cur + 1), width, 0);
             }
 
-            if (this.nav) {
+            if (this.nav && this.realLen > 1) {
                 this.nav.innerHTML = new Array(this.realLen + 1).join('<i></i>');
                 this.nav.querySelectorAll('i')[cur].classList.add('active');
             }
