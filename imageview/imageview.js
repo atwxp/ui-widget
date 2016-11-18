@@ -1,6 +1,6 @@
 /**
  * @file   图片预览查看器
- * @author wxp201013@gmail.com
+ * @author wxp201013@163.com
  */
 
 define(function (require, exports, module) {
