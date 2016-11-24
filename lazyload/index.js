@@ -34,7 +34,7 @@ define(function (require, exports, module) {
 
         var styles = window.getComputedStyle(elem, null);
 
-        return !(styles.display === 'none' || styles.visibility === 'hidden' || parseInt(styles.opacity, 10) === 0);
+        return !(styles.display === 'none' || styles.visibility === 'hidden' || parseFloat(styles.opacity) === 0);
     };
 
     /**
