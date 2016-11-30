@@ -231,29 +231,44 @@ define(function (require, exports, module) {
         };
 
         var loadImage = function (elem, callback) {
-            if (elem.lazyload) {
+
+            if (elem.customTotal === undefined) {
+                elem.customTotal = 0;
+            }
+
+            if (!elem.customElem) {
+                elem.customElem = elem.querySelectorAll('img');
+            }
+            // load all
+            if (elem.customTotal === elem.customElem.length) {
                 return;
             }
 
-            var img = elem.querySelector('img');
+            util.forEach(slice.call(elem.customElem), function (image) {
+                if (image.lazyload) {
+                    return;
+                }
 
-            elem.lazyload = 'loading';
+                image.lazyload = 'loading';
 
-            img.addEventListener('load', function () {
+                image.addEventListener('load', function () {
 
-                me.fire('preload', [img, size]);
+                    me.fire('preload', [image, size]);
 
-                elem.classList.add('contain');
+                    elem.classList.add('contain');
 
-                elem.lazyload = 'load';
+                    elem.customTotal++;
 
-            }, false);
+                    image.lazyload = 'load';
 
-            img.addEventListener('error', function () {
-                elem.lazyload = null;
-            }, false);
+                }, false);
 
-            img.src = img.getAttribute(dataSrc);
+                image.addEventListener('error', function () {
+                    image.lazyload = null;
+                }, false);
+
+                image.src = image.getAttribute(dataSrc);
+            })
         };
 
         var amend = function (num, len) {
@@ -267,8 +282,8 @@ define(function (require, exports, module) {
 
             return num;
         };
-
         loadImage(imgs[amend(cur, total)]);
+
         for (var i = 1; i <= options.preload; i++) {
             loadImage(imgs[amend(cur - i, total)]);
 
@@ -277,7 +292,7 @@ define(function (require, exports, module) {
     };
 
     Swiper.prototype.toggleNav = function (cur) {
-        if (!this.nav) {
+        if (!this.nav || this.realLen <= 1) {
             return;
         }
 

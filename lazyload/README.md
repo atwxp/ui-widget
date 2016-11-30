@@ -141,3 +141,53 @@
         container: listEle[0],
         isAsync: true
     });
+
+### Not Image Lazyload
+
+下面这个例子就是当页面滚动到这个区块到时候才加载图片，水平方向懒加载放在了 `swiper` 中的 `preload` 参数处理
+
+    {unit=4}
+    {total=list|@count}
+    <div class="hotrecom">
+        <ul class="hotrecom-list" data-arealazy data-src>
+        {each list as key : item}
+        {col = key % unit}
+        {nextcol = (key + 1) % unit}
+
+        {if col == 0}
+        <li class="hotrecom-list-item">
+        {/if}
+
+        <div class="hotrecom-list-link">
+            <a href="javascript:;" class="hotrecom-list-image {if item@last}hotrecom-list-image-last{/if}" data-bglazy>
+                <img data-src="{item.imgUrl}" alt="">
+            </a>
+        </div>
+
+        {if (key + 1) === total || nextcol == 0}
+        </li>
+        {/if}
+        {/each}
+    </ul>
+
+    <div class="hotrecom-dots"></div>
+    </div>
+
+    var mySwiper = new Swiper({
+        container: document.querySelector('.hotrecom-list')
+        nav: document.querySelector('.hotrecom-dots')
+        autoplay: false,
+        initStart: false,
+        type: 'img',
+        preload: 1
+    });
+
+    Lazyload.init('.hotrecom-list', {
+        container: document.querySelector('.hotrecom')
+    }, function () {
+        if (mySwiper.inited) {
+            return;
+        }
+
+        mySwiper.start();
+    })

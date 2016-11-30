@@ -33,7 +33,7 @@ define(function (require, exports, module) {
             render: null,
             dataUrl: 'url',
             hasTotal: false,
-            log: {}
+            type: ''
         }, options);
 
         this.init(options);
@@ -209,25 +209,17 @@ define(function (require, exports, module) {
         box.setAttribute('data-col', minIndex);
         box.setAttribute('data-coli', this.boxIndex[minIndex]++);
         box.setAttribute('data-index', this.cur);
-        // log
-        if (options.log) {
-            var log = {
-                pn: this.page,
-                p: this.cur + 1,
-                i: this.totalLen - this.loadedLen + this.cur + 1
-            };
-
-            util.extend(log, options.log || {});
-
-            box.setAttribute('data-click', JSON.stringify(log));
-        }
 
         this.pin[minIndex].appendChild(box);
 
-        // 不使用 clientHeight = margin + padding + border + content 减少reflow
-        this.pinH[minIndex] += box.clientHeight + options.gapV;
         // 始终以初始化的宽度为基准计算图片高度，即使用户resize也不影响pinH的变化，只对内容只有图片的有效
-        // this.pinH[minIndex] += this.colWidth * bc.height / bc.width + options.verticalDiff;
+        // 不使用 clientHeight = margin + padding + border + content 减少reflow
+        if (options.type === 'img') {
+            this.pinH[minIndex] += this.colWidth * bc.height / bc.width + options.gapV;
+        }
+        else {
+            this.pinH[minIndex] += box.clientHeight + options.gapV;
+        }
 
         this.cur++;
 

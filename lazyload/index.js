@@ -48,6 +48,19 @@ define(function (require, exports, module) {
     var loadImage = function (elem, dataSrcAttr, loadStatus, callback) {
         var src = elem.getAttribute(dataSrcAttr);
 
+        // 某个区块elem出现在可视区域时才执行某种动作
+        if (elem.hasAttribute('data-arealazy')) {
+            loadStatus.total++;
+
+            elem.lazyload = 'load';
+
+            elem.classList.add(src);
+
+            callback && callback(null, elem, src);
+
+            return;
+        }
+
         var isImageNode = elem.nodeName.toLowerCase() === 'img';
 
         var img = isImageNode ? elem : new Image();
@@ -63,11 +76,13 @@ define(function (require, exports, module) {
 
             loadStatus.total++;
 
-            callback && callback(elem, src, img);
+            callback && callback(null, elem, src, img);
         }, false);
 
         img.addEventListener('error', function () {
             elem.lazyload = null;
+
+            callback && callback('error', elem, src, img);
         }, false);
 
         img.setAttribute('src', src);
