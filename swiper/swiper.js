@@ -152,9 +152,12 @@ define(function (require, exports, module) {
                         dist = dist / (
                             (cur === 0 && dir === 'right') || (cur === this.slides.length - 1 && dir === 'left')
                                 ? Math.abs(dist) + 1 : 1);
-                        this._move(cur - 1, slidePos[cur - 1] + dist, 0);
+
+                        dir === 'right' && this._move(cur - 1, slidePos[cur - 1] + dist, 1);
+
                         this._move(cur, slidePos[cur] + dist, 0);
-                        this._move(cur + 1, slidePos[cur + 1] + dist, 0);
+
+                        dir === 'left' && this._move(cur + 1, slidePos[cur + 1] + dist, 0);
                     }
                 }
             })
@@ -471,11 +474,14 @@ define(function (require, exports, module) {
         }
     };
 
-    Swiper.prototype.go = function (cur) {
+    Swiper.prototype.go = function (cur, aniTime) {
         var options = this.options;
-        var aniTime = options.aniTime;
+
+        aniTime = typeof aniTime === 'undefined' ? options.aniTime : aniTime;
 
         var old = this.oldCur = this.cur;
+
+        cur = this.circle(cur);
 
         if (cur === old) {
             return;
@@ -484,20 +490,28 @@ define(function (require, exports, module) {
         // -1前进 1后退
         var dir = cur > old ? -1 : 1;
 
-        cur = this.circle(cur);
+        var diff = Math.abs(cur - old) - 1;
 
         if (!options.direction) {
             this._fadeInOut(old, 0, aniTime);
             this._fadeInOut(cur % this.realLen, 1, aniTime);
         }
         else {
+            // move all the slides between index and to in the right direction
+            while (diff--) {
+                this._translate((cur > old ? cur : old) - diff - 1, dir * this.width, 0);
+            }
+
             this._translate(old, dir * this.width, aniTime);
+
             this._translate(cur, 0, aniTime);
 
             if (options.loop) {
                 this._translate(this.circle(cur - dir), -dir * this.width, 0);
             }
         }
+
+        this.toggleNav(cur);
 
         this.cur = cur;
     };
