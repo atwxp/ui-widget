@@ -153,11 +153,11 @@ define(function (require, exports, module) {
                             (cur === 0 && dir === 'right') || (cur === this.slides.length - 1 && dir === 'left')
                                 ? Math.abs(dist) + 1 : 1);
 
-                        dir === 'right' && this._move(cur - 1, slidePos[cur - 1] + dist, 1);
+                        this._move(cur - 1, slidePos[cur - 1] + dist, 1);
 
                         this._move(cur, slidePos[cur] + dist, 0);
 
-                        dir === 'left' && this._move(cur + 1, slidePos[cur + 1] + dist, 0);
+                        this._move(cur + 1, slidePos[cur + 1] + dist, 0);
                     }
                 }
             })
@@ -497,9 +497,26 @@ define(function (require, exports, module) {
             this._fadeInOut(cur % this.realLen, 1, aniTime);
         }
         else {
-            // move all the slides between index and to in the right direction
-            while (diff--) {
-                this._translate((cur > old ? cur : old) - diff - 1, dir * this.width, 0);
+            if (!diff) {
+                // 前进
+                if (dir === -1) {
+                    diff = old;
+                    while (diff--) {
+                        this._translate(this.circle(diff), dir * this.width, 0);
+                    }
+                }
+                else {
+                    diff = cur;
+                    while (++diff < this.slides.length) {
+                        this._translate(this.circle(diff), dir * this.width, 0);
+                    }
+                }
+            }
+            else {
+                // move all the slides between index and to in the right direction
+                while (diff--) {
+                    this._translate((cur > old ? cur : old) - diff - 1, dir * this.width, 0);
+                }
             }
 
             this._translate(old, dir * this.width, aniTime);

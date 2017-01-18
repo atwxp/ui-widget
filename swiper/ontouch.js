@@ -35,6 +35,10 @@ define(function (require, exports, module) {
         }, false);
 
         touchsurface.addEventListener('touchmove', function (e) {
+            if (e.touches.length > 1 || e.scale && e.scale !== 1) {
+                return;
+            }
+
             if (options && options.disableScroll) {
                 e.preventDefault();
             }
