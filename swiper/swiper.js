@@ -15,16 +15,21 @@ define(function (require, exports, module) {
     /**
      * swiper
      *
-     * @param {Object}        options                 配置
-     * @param {DOM}           options.container       滑动的容器
-     * @param {DOM}           options.nav             指示位置的圈圈
-     * @param {number}        options.cur             当前面板索引
-     * @param {boolean}       options.direction       滑动方向，默认是向左
-     * @param {boolean}       options.loop            是否循环播放
-     * @param {boolean}       options.aniTime         动画时间
-     * @param {number}        options.autoplay        是否自动播放，是的话指定间隔时长，否的话false
-     * @param {number}        options.proportion      滑动的阈值
-     * @param {boolean}       options.allowGesture    是否开启手势滑动
+     * @param    {Object}         options                 配置
+     * @property {DOM}            options.container       滑动的容器
+     * @property {DOM}            options.nav             指示位置的圈圈
+     * @property {number}         options.cur             当前面板索引
+     * @property {boolean|string} options.direction       滑动方向，默认是向左，值为false表示使用fadeInOut
+     * @property {boolean}        options.loop            是否循环播放
+     * @property {number}         options.aniTime         动画时间
+     * @property {number|string}  options.autoplay        是否自动播放，是的话指定间隔时长，否的话false
+     * @property {number}         options.proportion      滑动的阈值
+     * @property {boolean}        options.allowGesture    是否开启手势滑动
+     * @property {boolean|Object} options.log             左右滑动时是否发送日志
+     * @property {boolean}        options.initStart       初始化时就开始启动 start(),指定自动轮播的话会自动开始轮播
+     * @property {string}         options.type            预加载元素的类型(querySelector()接受的参数)
+     * @property {number}         options.preload         预加载几张图片
+     * @property {string}         options.dataSrc         指定图片url的字段, 默认 data-src
      */
     function Swiper(options) {
         this.options = {
@@ -40,7 +45,8 @@ define(function (require, exports, module) {
             initStart: true,
             type: '',
             preload: 0,
-            dataSrc: 'data-src'
+            dataSrc: 'data-src',
+            log: {}
         };
 
         util.extend(this.options, options);
@@ -75,7 +81,7 @@ define(function (require, exports, module) {
         this.height = rect.height || container.offsetHeight;
 
         // todo: 不支持transition 怎么处理？
-        // if (!util.supportCSS('transition') || this.realLen === 1) {
+        // if (!util.featureTest('transition') || this.realLen === 1) {
         //     this.container.classList.add('visible');
         //     return;
         // }
@@ -84,9 +90,9 @@ define(function (require, exports, module) {
             slide.setAttribute('data-index', index);
         });
 
+        // 只有一张图片，不循环&禁止手势
         if (this.realLen === 1) {
             options.loop = false;
-            options.autoplay = false;
             options.allowGesture = false;
         }
 
@@ -116,7 +122,7 @@ define(function (require, exports, module) {
             me.toggleNav(cur);
 
             // preload img
-            if (options.type === 'img') {
+            if (options.type) {
                 me.preloadImg();
             }
         });
@@ -134,6 +140,7 @@ define(function (require, exports, module) {
                     this.isScroll = true;
                 }
 
+                // if user is not trying to scroll vertically, then 防止滚动屏幕
                 if (this.isScroll) {
                     touchEvt.preventDefault();
 
@@ -145,15 +152,21 @@ define(function (require, exports, module) {
 
                     if (options.loop) {
                         this._move(this.circle(cur - 1), slidePos[this.circle(cur - 1)] + dist, 0);
+
                         this._move(cur, slidePos[cur] + dist, 0);
+
                         this._move(this.circle(cur + 1), slidePos[this.circle(cur + 1)] + dist, 0);
                     }
-                    else {
-                        dist = dist / (
-                            (cur === 0 && dir === 'right') || (cur === this.slides.length - 1 && dir === 'left')
-                                ? Math.abs(dist) + 1 : 1);
 
-                        this._move(cur - 1, slidePos[cur - 1] + dist, 1);
+                    else {
+                        if (
+                            (cur === 0 && dir === 'right')
+                            || (cur === this.slides.length - 1 && dir === 'left')
+                        ) {
+                            dist = dist / (Math.abs(dist) / this.width + 1)
+                        }
+
+                        this._move(cur - 1, slidePos[cur - 1] + dist, 0);
 
                         this._move(cur, slidePos[cur] + dist, 0);
 
@@ -161,46 +174,11 @@ define(function (require, exports, module) {
                     }
                 }
             })
-            .on('swipeleft', function (evt, touchEvt, dist) {
-                if (!this.isScroll) {
-                    return;
-                }
-
-                var options = this.options;
-
-                this.next();
-
-                if (options.loop) {
-                    this._move(this.circle(this.cur - 2), this.slidePos[this.circle(this.cur - 2)], 0);
-                }
-            })
-            .on('swiperight', function (evt, touchEvt, dist) {
-                if (!this.isScroll) {
-                    return;
-                }
-
-                var options = this.options;
-
-                this.prev();
-
-                if (options.loop) {
-                    this._move(this.circle(this.cur + 2), this.slidePos[this.circle(this.cur + 2)], 0);
-                }
-            })
-            .on('release', function (evt, touchEvt, dist) {
-                if (!this.isScroll) {
-                    return;
-                }
-
-                var cur = this.cur;
+            .on('releaseBack', function () {
                 var width = this.width;
+                var cur = this.cur;
                 var options = this.options;
                 var aniTime = options.aniTime;
-
-                if (Math.abs(dist) >= width * options.proportion) {
-                    this.trigger(dist < 0 ? 'swipeleft' : 'swiperight');
-                    return;
-                }
 
                 if (!options.loop) {
                     this._move(cur - 1, -width, aniTime);
@@ -213,6 +191,82 @@ define(function (require, exports, module) {
                     this._move(this.circle(cur + 1), width, aniTime);
                 }
             })
+            .on('swipeleft', function (evt, touchEvt, dist) {
+                if (!this.isScroll) {
+                    return;
+                }
+
+                var cur = this.cur;
+                var options = this.options;
+                var slidePos = this.slidePos;
+
+                // 最后一屏
+                if (cur === this.slides.length - 1) {
+                    this.trigger('releaseBack');
+                    return;
+                }
+
+                if (options.loop) {
+                    this._move(this.circle(cur - 1), slidePos[this.circle(cur - 1)], 0);
+                }
+                else {
+                    this._move(cur - 1, slidePos[cur - 1], 0);
+                }
+
+                this.next();
+
+                if (options.log) {
+                    log.sendLog(util.extend({
+                        bt: 'b-next'
+                    }, options.log || {}), this.container);
+                }
+            })
+            .on('swiperight', function (evt, touchEvt, dist) {
+                if (!this.isScroll) {
+                    return;
+                }
+
+                var cur = this.cur;
+                var options = this.options;
+                var slidePos = this.slidePos;
+
+                // 第一屏
+                if (cur === 0) {
+                    this.trigger('releaseBack')
+                    return;
+                }
+
+                if (options.loop) {
+                    this._move(this.circle(cur + 1), slidePos[this.circle(cur + 1)], 0);
+                }
+                else {
+                    this._move(cur + 1, slidePos[cur + 1], 0);
+                }
+
+                this.prev();
+
+                if (options.log) {
+                    log.sendLog(util.extend({
+                        bt: 'b-prev'
+                    }, options.log || {}), this.container);
+                }
+            })
+            .on('release', function (evt, touchEvt, dist) {
+                if (!this.isScroll) {
+                    return;
+                }
+
+                // 手指离开屏幕，判断滑动距离是否超过 proportion
+                if (Math.abs(dist) >= this.width * this.options.proportion) {
+                    this.trigger(dist < 0 ? 'swipeleft' : 'swiperight');
+                    return;
+                }
+                // 没有的话需要回弹回原始位置, 以及下面的情况
+                // 1. 不再 allowedTime 时间内
+                // 2. 在 allowedTime 时间内，但是滑动距离没有超过 threshold
+                this.trigger('releaseBack');
+
+            });
 
         ontouch(container, this, options);
     };
@@ -234,44 +288,58 @@ define(function (require, exports, module) {
         };
 
         var loadImage = function (elem, callback) {
-
             if (elem.customTotal === undefined) {
                 elem.customTotal = 0;
             }
 
             if (!elem.customElem) {
-                elem.customElem = elem.querySelectorAll('img');
+                elem.customElem = elem.querySelectorAll(options.type);
             }
             // load all
             if (elem.customTotal === elem.customElem.length) {
                 return;
             }
-
             util.forEach(slice.call(elem.customElem), function (image) {
                 if (image.lazyload) {
                     return;
                 }
 
+                var isImageNode = image.nodeName.toLowerCase() === 'img';
+
+                var newImg = isImageNode ? image : new Image();
+
+                var src = image.getAttribute(dataSrc);
+
+                if (src === 'null') {
+                    return;
+                }
+
                 image.lazyload = 'loading';
 
-                image.addEventListener('load', function () {
+                newImg.addEventListener('load', function () {
+                    if (!isImageNode) {
+                        image.style['background-image'] = 'url(' + src + ')';
+                    }
 
                     me.fire('preload', [image, size]);
 
-                    elem.classList.add('contain');
+                    elem.classList.add('graph-contain');
 
                     elem.customTotal++;
 
                     image.lazyload = 'load';
-
                 }, false);
 
-                image.addEventListener('error', function () {
+                newImg.addEventListener('error', function () {
+                    me.fire('loadError');
+
+                    elem.classList.add('graph-contain');
+
                     image.lazyload = null;
                 }, false);
 
-                image.src = image.getAttribute(dataSrc);
-            })
+                newImg.src = src;
+            });
         };
 
         var amend = function (num, len) {
@@ -285,6 +353,7 @@ define(function (require, exports, module) {
 
             return num;
         };
+
         loadImage(imgs[amend(cur, total)]);
 
         for (var i = 1; i <= options.preload; i++) {
@@ -304,33 +373,33 @@ define(function (require, exports, module) {
         var realLen = this.realLen;
 
         util.forEach(slice.call(dots), function (item) {
-            item.classList.remove('active');
+            item.classList.remove('graph-active');
         });
 
-        dots[cur % realLen].classList.add('active');
+        dots[cur % realLen].classList.add('graph-active');
     };
 
     Swiper.prototype.repos = function () {
         var options = this.options;
 
         var cur = this.cur;
-        var slides = this.slides;
         var container = this.container;
+        var slides = this.slides = container.children;
 
         var me = this;
 
         // getBoundingClientRect(): border + padding + width,
         // 返回top, right, bottom, left, width, heihgt
+
         var width = this.width;
 
         if (!options.direction) {
-
             util.forEach(slice.call(this.slides), function (slide, index) {
                 me._fadeInOut(index, parseInt(index, 10) !== cur ? 0 : 1, 0);
             });
         }
         else {
-            // loop状态&&子元素个数等于2个，无法循环轮播，需要复制已有节点
+            // loop状态&&子元素个数小于三个，无法循环轮播，需要复制已有节点
             if (options.loop && this.realLen === 2) {
                 container.appendChild(slides[0].cloneNode(true));
                 container.appendChild(slides[1].cloneNode(true));
@@ -348,17 +417,19 @@ define(function (require, exports, module) {
             });
 
             if (options.loop) {
-                this._translate(this.circle(cur - 1), -width, 0);
-                this._translate(this.circle(cur + 1), width, 0);
+                cur === 0 && this._translate(this.circle(cur - 1), -width, 0);
+
+                cur === slides.length - 1 && this._translate(this.circle(cur + 1), width, 0);
             }
 
             if (this.nav && this.realLen > 1) {
                 this.nav.innerHTML = new Array(this.realLen + 1).join('<i></i>');
-                this.nav.querySelectorAll('i')[cur].classList.add('active');
+
+                this.nav.querySelectorAll('i')[cur].classList.add('graph-active');
             }
         }
 
-        this.container.classList.add('visible');
+        this.container.classList.add('graph-visible');
     };
 
     Swiper.prototype.resize = function () {
@@ -372,7 +443,7 @@ define(function (require, exports, module) {
         var container = this.container;
         var width = container.getBoundingClientRect().width || container.offsetWidth;
 
-        if (width === this.width) {
+        if (width === this.width || width === 0) {
             return;
         }
 
@@ -392,8 +463,9 @@ define(function (require, exports, module) {
         });
 
         if (options.loop) {
-            this._translate(this.circle(cur - 1), -width, 0);
-            this._translate(this.circle(cur + 1), width, 0);
+            cur === 0 && this._translate(this.circle(cur - 1), -width, 0);
+
+            cur === slides.length - 1 && this._translate(this.circle(cur + 1), width, 0);
         }
     };
 
@@ -407,48 +479,38 @@ define(function (require, exports, module) {
         }
 
         style.webkitTransitionDuration = style.transitionDuration = time + 'ms';
+
         style.opacity = opacity;
     };
 
     Swiper.prototype.circle = function (num) {
         var len = this.slides.length;
 
-        if (num < 0) {
-            return len + num;
-        }
-
-        else if (num >= len) {
-            return num - len;
-        }
-
-        return num;
+        return (len + (num % len)) % len;
     };
 
     Swiper.prototype.start = function () {
         var options = this.options;
-
         this.stop();
 
         if (!options.initStart) {
             this.repos();
+
             options.initStart = true;
         }
 
         if (!this.inited) {
             this.fire('pagechange', [this.cur, this.slides.length, this.slides[this.cur]]);
+
             this.inited = true;
         }
 
         if (typeof options.autoplay === 'number') {
             this.timer = setTimeout(
-                this[
-                    (options.direction && options.direction === 'right')
-                    ? 'prev' : 'next'
-                ].bind(this),
+                this[(options.direction && options.direction === 'right') ? 'prev' : 'next'].bind(this),
                 options.autoplay
             );
         }
-
     };
 
     Swiper.prototype.stop = function () {
@@ -497,26 +559,9 @@ define(function (require, exports, module) {
             this._fadeInOut(cur % this.realLen, 1, aniTime);
         }
         else {
-            if (!diff) {
-                // 前进
-                if (dir === -1) {
-                    diff = old;
-                    while (diff--) {
-                        this._translate(this.circle(diff), dir * this.width, 0);
-                    }
-                }
-                else {
-                    diff = cur;
-                    while (++diff < this.slides.length) {
-                        this._translate(this.circle(diff), dir * this.width, 0);
-                    }
-                }
-            }
-            else {
-                // move all the slides between index and to in the right direction
-                while (diff--) {
-                    this._translate((cur > old ? cur : old) - diff - 1, dir * this.width, 0);
-                }
+            // move all the slides between index and to in the right direction
+            while (diff--) {
+                this._translate((cur > old ? cur : old) - diff - 1, dir * this.width, 0);
             }
 
             this._translate(old, dir * this.width, aniTime);
@@ -534,7 +579,6 @@ define(function (require, exports, module) {
     };
 
     Swiper.prototype._translate = function (cur, dist, duration) {
-
         this.slidePos[cur] = dist;
 
         this._move(cur, dist, duration);
@@ -550,7 +594,10 @@ define(function (require, exports, module) {
         }
 
         style.webkitTransitionDuration = style.transitionDuration = duration + 'ms';
-        style.webkitTransform = style.transform = 'translate(' + dist + 'px, 0) ' + 'translateZ(0)';
+
+        style.webkitTransform = 'translate(' + dist + 'px, 0) translateZ(0)';
+
+        style.transform = 'translate(' + dist + 'px, 0) translateZ(0)';
     };
 
     Swiper.prototype.transitionEnd = function (e) {
