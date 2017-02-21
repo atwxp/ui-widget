@@ -201,7 +201,7 @@ define(function (require, exports, module) {
                 var slidePos = this.slidePos;
 
                 // 最后一屏
-                if (cur === this.slides.length - 1) {
+                if (!options.loop && cur === this.slides.length - 1) {
                     this.trigger('releaseBack');
                     return;
                 }
@@ -231,7 +231,7 @@ define(function (require, exports, module) {
                 var slidePos = this.slidePos;
 
                 // 第一屏
-                if (cur === 0) {
+                if (!options.loop && cur === 0) {
                     this.trigger('releaseBack')
                     return;
                 }
@@ -261,6 +261,7 @@ define(function (require, exports, module) {
                     this.trigger(dist < 0 ? 'swipeleft' : 'swiperight');
                     return;
                 }
+
                 // 没有的话需要回弹回原始位置, 以及下面的情况
                 // 1. 不再 allowedTime 时间内
                 // 2. 在 allowedTime 时间内，但是滑动距离没有超过 threshold
@@ -424,8 +425,7 @@ define(function (require, exports, module) {
 
             if (this.nav && this.realLen > 1) {
                 this.nav.innerHTML = new Array(this.realLen + 1).join('<i></i>');
-
-                this.nav.querySelectorAll('i')[cur].classList.add('graph-active');
+                this.toggleNav(cur);
             }
         }
 
@@ -543,16 +543,24 @@ define(function (require, exports, module) {
 
         var old = this.oldCur = this.cur;
 
-        cur = this.circle(cur);
-
         if (cur === old) {
             return;
         }
 
         // -1前进 1后退
-        var dir = cur > old ? -1 : 1;
+        var dir =  Math.abs(old - cur) / (old - cur);
 
-        var diff = Math.abs(cur - old) - 1;
+        if (options.loop) {
+            var naturalDir = dir;
+
+            dir = -this.slidePos[this.circle(cur)] / this.width;
+
+            if (dir !== naturalDir) {
+                cur = -dir * this.slides.length + cur;
+            }
+        }
+
+        var diff = Math.abs(old - cur) - 1;
 
         if (!options.direction) {
             this._fadeInOut(old, 0, aniTime);
@@ -561,8 +569,10 @@ define(function (require, exports, module) {
         else {
             // move all the slides between index and to in the right direction
             while (diff--) {
-                this._translate((cur > old ? cur : old) - diff - 1, dir * this.width, 0);
+                this._translate(this.circle((cur > old ? cur : old) - diff - 1), dir * this.width, 0);
             }
+
+            cur = this.circle(cur);
 
             this._translate(old, dir * this.width, aniTime);
 
