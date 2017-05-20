@@ -11,4 +11,4 @@ npm start
 ```
 ## Screenshot
 
-![](https://github.com/atwxp/ui-widget/tree/master/handlock/img/screenshot.png)
+![](/atwxp/ui-widget/raw/master/handlock/img/screenshot.png)
