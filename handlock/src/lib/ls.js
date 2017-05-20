@@ -1,4 +1,4 @@
-const support = localStorage && localStorage.getItem;
+const support = !!(localStorage && localStorage.getItem);
 
 const avaliable = (() => {
     try {

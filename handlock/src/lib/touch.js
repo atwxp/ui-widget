@@ -9,7 +9,7 @@ export default function ontouch(touchsurface, ctx, options = {}) {
     let distX;
     let distY;
 
-    const { threshold = 50, restraint = 100, allowedTime = 250} = options;
+    const { threshold = 50, restraint = 100, allowedTime = 250 } = options;
 
     touchsurface.addEventListener('touchstart', e => {
         var touchObj = e.targetTouches[0];
@@ -19,7 +19,7 @@ export default function ontouch(touchsurface, ctx, options = {}) {
         startTime = +new Date();
 
         ctx.fire('touchstart', { startX, startY });
-    });
+    }, { passive: true });
 
     touchsurface.addEventListener('touchmove', throttle(function (e) {
         // only one finger
@@ -45,7 +45,7 @@ export default function ontouch(touchsurface, ctx, options = {}) {
 
         ctx.fire('touchmove', dir, { currentX, currentY, distX, distY });
 
-    }, 100), { passive: !options.preventScroll});
+    }, 100), { passive: !options.preventScroll });
 
     touchsurface.addEventListener('touchend', e => {
         let elapsedTime = +new Date() - startTime;

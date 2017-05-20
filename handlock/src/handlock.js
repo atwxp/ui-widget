@@ -1,7 +1,7 @@
 // http://jiaolonghuang.github.io/2015/11/16/bug-canvas/
 // https://www.html5rocks.com/en/tutorials/canvas/hidpi/
 
-import { getStyle, retinaCanvas } from './lib/util';
+import { retinaCanvas } from './lib/util';
 import ontouch from './lib/touch';
 import Emitter from './lib/emitter';
 import Record from './record';
@@ -202,7 +202,7 @@ export default class Handlock extends Emitter {
                 return;
             }
 
-console.log('touchend mode before: ', this.mode, this.record.data);
+            console.log('touchend mode before: ', this.mode, this.record.data);
 
             switch (this.mode) {
                 // 设置密码
@@ -273,7 +273,7 @@ console.log('touchend mode before: ', this.mode, this.record.data);
         context.beginPath();
 
         for (let i = 0; i < startList.length; i++) {
-            const {x, y} = startList[i];
+            const { x, y } = startList[i];
 
             if (i === 0) {
                 context.moveTo(x, y);
