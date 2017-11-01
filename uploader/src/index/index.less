@@ -1,0 +1,209 @@
+body {
+    -webkit-touch-callout: none;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: rgba(255,255,255,0);
+
+    -webkit-user-select: none;
+    user-select: none;
+}
+input[type="file"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+}
+.publish {
+    position: relative;
+    border: 1px solid #ccc;
+    width: 100%;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+}
+.preview {
+    position: relative;
+    margin-top: 10px;
+    .add-pic {
+        position: relative;
+        display: inline-block;
+
+        border: 2px dashed #aaa;
+        width: 100px;
+        height: 100px;
+        margin: 0 5px 10px;
+
+        -webkit-box-sizing: border-box;
+        box-sizing: border-box;
+
+        visibility: hidden;
+        &::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 50%;
+            height: 2px;
+
+            background-color: #aaa;
+            transform: translate(-50%, -50%);
+        }
+        &::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 2px;
+            height: 50%;
+            background-color: #aaa;
+            transform: translate(-50%, -50%);
+        }
+    }
+    .uploadList {
+        display: inline-block;
+        position: relative;
+
+        vertical-align: top;
+        margin: 0 5px 10px;
+
+        -webkit-box-sizing: border-box;
+        box-sizing: border-box;
+
+        img {
+            vertical-align: middle;
+        }
+        .loading-icon {
+            display: none;
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            background: url(./img/loading.gif) no-repeat center;
+            span {
+                display: none;
+            }
+        }
+        .del-icon {
+            position: absolute;
+            right: 2px;
+            top: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, .4);
+            transform: rotate(45deg);
+
+            &::before,
+            &::after {
+                content: '';
+                position: absolute;
+                background-color: #fff;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+
+            }
+            &::before {
+                width: 10px;
+                height: 2px;
+            }
+            &::after {
+                width: 2px;
+                height: 10px;
+            }
+        }
+    }
+    .loading {
+        .loading-icon {
+            display: block;
+        }
+        .del-icon {
+            display: none;
+        }
+    }
+
+    .error {
+        .loading-icon {
+            background: none;
+            display: block;
+             span {
+                display: block;
+            }
+        }
+        .del-icon {
+            display: none;
+        }
+    }
+
+    &.active {
+        display: block;
+        .add-pic {
+            visibility: visible;
+        }
+    }
+}
+
+
+.ui-mask {
+    display: none;
+    position: fixed;
+            
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background: #000;
+
+    z-index: 1000;
+
+    -webkit-user-select: none;
+        -ms-user-select: none;
+            user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: rgba(0,0,0,0);
+
+    .ui-imageview {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+
+        img {
+            display: block;
+            margin: 0 auto;
+        }
+    }
+
+    .close {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        // background-color: rgba(0, 0, 0, .4);
+        background-color: rgba(73, 73, 73, 0.8);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        transform: rotate(45deg);
+        &::before,
+        &::after {
+            content: '';
+            position: absolute;
+            background-color: #fff;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+
+        }
+        &::before {
+            width: 20px;
+            height: 2px;
+        }
+        &::after {
+            width: 2px;
+            height: 20px;
+        }
+    }
+}

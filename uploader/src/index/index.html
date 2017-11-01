@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>图片分享</title>
+    <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <script src="../../output/index.js" defer></script>
+</head>
+
+<body>
+
+    <div class="publish" id="j-publish">
+        我要发图
+        <input type="file" class="picupload" data-role="picupload" name="fileselect[]" accept="image/*" />
+    </div>
+    
+    <div class="preview" id="j-preview">
+        <div class="add-pic" data-role="add-pic">
+            <input type="file" name="pic" data-role="pic" accept="image/*" />
+        </div>
+    </div>
+
+    <button class="submit" id="j-submit">提交</button>
+    <p class="ret"></p>
+</body>
+
+</html>
