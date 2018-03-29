@@ -2,7 +2,6 @@
   "name": "handlock",
   "version": "1.0.0",
   "description": "",
-  "main": "webpack.config.babel.js",
   "scripts": {
     "start": "webpack-dev-server --progress",
     "test": "echo \"Error: no test specified\" && exit 1"

@@ -1,1 +1,1 @@
-some web ui widget
+some web ui widgets

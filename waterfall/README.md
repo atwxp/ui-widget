@@ -1,20 +1,24 @@
 ## Waterfall
 
+瀑布流
+
 ### options
 
-    options = util.extend({
-        main: null,
-        loadIcon: null,
-        gapH: 0,
-        gapV: 10,
-        pinNum: 0,
-        loadUrl: '',
-        params: {},
-        render: null,
-        dataUrl: 'url',
-        hasTotal: false,
-        log: {}
-    }, options);
+```js
+options = util.extend({
+  main: null,
+  loadIcon: null,
+  gapH: 0,
+  gapV: 10,
+  pinNum: 0,
+  loadUrl: '',
+  params: {},
+  render: null,
+  dataUrl: 'url',
+  hasTotal: false,
+  log: {}
+}, options);
+```
 
 - `main`  瀑布流的父容器
 
@@ -38,84 +42,93 @@
 
 - `log` 日志信息 false 表示不发，默认发送以下日志
 
-        var log = {
-            pn: this.page, // 当前页数
-            p: this.cur + 1, // 当前页数第几个
-            i: this.totalLen - this.loadedLen + this.cur + 1 // 总共第几个
-        };
-
+  ```js
+  var log = {
+    pn: this.page, // 当前页数
+    p: this.cur + 1, // 当前页数第几个
+    i: this.totalLen - this.loadedLen + this.cur + 1 // 总共第几个
+  };
+  ```
 
 ### Event API
 
 有三个事件
 
-    // 在 update/loaded 事件可以拿到这个值 wf.status
-    wf.on('update', function () {});
+```js
+// 在 update/loaded 事件可以拿到这个值 wf.status
+wf.on('update', function() {});
 
-    // 正在发送 ajax 请求 触发的
-    wf.on('loading', function() {});
+// 正在发送 ajax 请求 触发的
+wf.on('loading', function() {});
 
-    // 所有图片加载插入页面内完毕触发
-    wf.on('loaded', function () {})
+// 所有图片加载插入页面内完毕触发
+wf.on('loaded', function() {});
+```
 
 ### loadMore()
 
 这个列表必须实现自己的 `loadMore(params, callback)`，这个函数就是一个 ajax 啥也没有
 
-    WaterFall.prototype.loadMore = function (params, callback) {
-        var options = this.options;
+```js
+  WaterFall.prototype.loadMore = function (params, callback) {
+    var options = this.options;
 
-        var me = this;
+    var me = this;
 
-        params = $.extend({}, options.params, params);
+    params = $.extend({}, options.params, params);
 
-        this.fire('loading');
+    this.fire('loading');
 
-        $.ajax({
-            type: 'GET',
-            url: options.loadUrl,
-            data: params,
-            success: function (res) {
-                var data;
+    $.ajax({
+      type: 'GET',
+      url: options.loadUrl,
+      data: params,
+      success: function (res) {
+        var data;
 
-                me.loadedLen = 0;
+        me.loadedLen = 0;
 
-                if (res.status || !res.data || !(data = me.dealData(res.data))) {
-                    callback('err');
-                    return;
-                }
+        if (res.status || !res.data || !(data = me.dealData(res.data))) {
+          callback('err');
+          return;
+        }
 
-                var len = data.length;
+        var len = data.length;
 
-                me.loadedLen = len;
+        me.loadedLen = len;
 
-                me.page++;
+        me.page++;
 
-                me.totalLen += len;
+        me.totalLen += len;
 
-                callback(null);
+        callback(null);
 
-                me.render(data);
-            },
-            error: function (err) {
-                callback(err);
-            }
-        });
-    };
+        me.render(data);
+      },
+      error: function (err) {
+        callback(err);
+      }
+    });
+  };
+```
 
 可以看到这段代码有一个 `this.dealData(data)` 的方法，这个方法可以被实例重写，默认原型方法很简单就是简单的返回 `data`：
 
-    WaterFall.prototype.dealData = function (data) {
-        return data.length && data;
-    };
+```js
+WaterFall.prototype.dealData = function (data) {
+  return data.length && data;
+};
+```
 
 之所以这样做，是因为可能有些接口不一致需要在业务内处理数据，比如：
 
-    wf.dealData = function (data) {
-         return data.map(function (item) {
-              return item.name;
-          });
-      };
+```js
+wf.dealData = function (data) {
+  return data.map(function (item) {
+    return item.name;
+  });
+};
+```
 
 ### Usage
 
